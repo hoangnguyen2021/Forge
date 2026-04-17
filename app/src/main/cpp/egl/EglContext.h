@@ -1,4 +1,5 @@
 #pragma once
+
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <GLES3/gl3.h>
@@ -8,8 +9,10 @@ class EglContext {
 public:
     ~EglContext() { destroy(); }
 
-    bool init(ANativeWindow* window);
+    bool init(ANativeWindow *window);
+
     void swapBuffers();
+
     void destroy();
 
 private:

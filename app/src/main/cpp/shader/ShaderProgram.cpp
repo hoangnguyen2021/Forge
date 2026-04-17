@@ -7,7 +7,7 @@
 
 GLuint compileShader(GLenum type, std::string_view src) {
     GLuint shader = glCreateShader(type);
-    const char* srcPtr = src.data();
+    const char *srcPtr = src.data();
     auto srcLen = static_cast<GLint>(src.size());
     glShaderSource(shader, 1, &srcPtr, &srcLen);
     glCompileShader(shader);

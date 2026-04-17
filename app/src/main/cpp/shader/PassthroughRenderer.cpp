@@ -37,25 +37,25 @@ void main() {
 
 // Interleaved xy + uv, fullscreen triangle strip
 static constexpr float kQuad[] = {
-    -1.0f, -1.0f,  0.0f, 0.0f,
-     1.0f, -1.0f,  1.0f, 0.0f,
-    -1.0f,  1.0f,  0.0f, 1.0f,
-     1.0f,  1.0f,  1.0f, 1.0f,
+        -1.0f, -1.0f, 0.0f, 0.0f,
+        1.0f, -1.0f, 1.0f, 0.0f,
+        -1.0f, 1.0f, 0.0f, 1.0f,
+        1.0f, 1.0f, 1.0f, 1.0f,
 };
 
 bool PassthroughRenderer::init(GLuint oesTextureId) {
     oesTexId_ = oesTextureId;
 
-    GLuint vert = compileShader(GL_VERTEX_SHADER,   kVertSrc);
+    GLuint vert = compileShader(GL_VERTEX_SHADER, kVertSrc);
     GLuint frag = compileShader(GL_FRAGMENT_SHADER, kFragSrc);
     if (!vert || !frag) return false;
 
     program_ = linkProgram(vert, frag);
     if (!program_) return false;
 
-    uTexMatrix_  = glGetUniformLocation(program_, "uTexMatrix");
-    uTexture_    = glGetUniformLocation(program_, "uTexture");
-    uCropScale_  = glGetUniformLocation(program_, "uCropScale");
+    uTexMatrix_ = glGetUniformLocation(program_, "uTexMatrix");
+    uTexture_ = glGetUniformLocation(program_, "uTexture");
+    uCropScale_ = glGetUniformLocation(program_, "uCropScale");
     uCropOffset_ = glGetUniformLocation(program_, "uCropOffset");
 
     glGenBuffers(1, &vbo_);
@@ -71,22 +71,22 @@ void PassthroughRenderer::setViewport(int camW, int camH, int surfW, int surfH) 
     float scaleW = static_cast<float>(surfW) / camW;
     float scaleH = static_cast<float>(surfH) / camH;
     float renderScale = std::max(scaleW, scaleH);  // center crop: zoom to fill
-    cropScaleX_  = scaleW / renderScale;
-    cropScaleY_  = scaleH / renderScale;
+    cropScaleX_ = scaleW / renderScale;
+    cropScaleY_ = scaleH / renderScale;
     cropOffsetX_ = (1.0f - cropScaleX_) * 0.5f;
     cropOffsetY_ = (1.0f - cropScaleY_) * 0.5f;
     LOGI("viewport set: cam=%dx%d surf=%dx%d cropScale=(%.3f,%.3f)",
          camW, camH, surfW, surfH, cropScaleX_, cropScaleY_);
 }
 
-void PassthroughRenderer::draw(const float* texMatrix4x4) {
+void PassthroughRenderer::draw(const float *texMatrix4x4) {
     glUseProgram(program_);
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_EXTERNAL_OES, oesTexId_);
     glUniform1i(uTexture_, 0);
     glUniformMatrix4fv(uTexMatrix_, 1, GL_FALSE, texMatrix4x4);
-    glUniform2f(uCropScale_,  cropScaleX_,  cropScaleY_);
+    glUniform2f(uCropScale_, cropScaleX_, cropScaleY_);
     glUniform2f(uCropOffset_, cropOffsetX_, cropOffsetY_);
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo_);
@@ -94,7 +94,7 @@ void PassthroughRenderer::draw(const float* texMatrix4x4) {
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), nullptr);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float),
-                          reinterpret_cast<const void*>(2 * sizeof(float)));
+                          reinterpret_cast<const void *>(2 * sizeof(float)));
 
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
@@ -104,6 +104,12 @@ void PassthroughRenderer::draw(const float* texMatrix4x4) {
 }
 
 void PassthroughRenderer::destroy() {
-    if (vbo_)     { glDeleteBuffers(1,   &vbo_);    vbo_     = 0; }
-    if (program_) { glDeleteProgram(program_);       program_ = 0; }
+    if (vbo_) {
+        glDeleteBuffers(1, &vbo_);
+        vbo_ = 0;
+    }
+    if (program_) {
+        glDeleteProgram(program_);
+        program_ = 0;
+    }
 }

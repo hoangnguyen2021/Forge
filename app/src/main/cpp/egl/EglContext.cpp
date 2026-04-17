@@ -5,7 +5,7 @@
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
 
-bool EglContext::init(ANativeWindow* window) {
+bool EglContext::init(ANativeWindow *window) {
     display_ = eglGetDisplay(EGL_DEFAULT_DISPLAY);
     if (display_ == EGL_NO_DISPLAY) {
         LOGE("eglGetDisplay failed");
@@ -17,13 +17,13 @@ bool EglContext::init(ANativeWindow* window) {
     }
 
     const EGLint configAttribs[] = {
-        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT,
-        EGL_SURFACE_TYPE,    EGL_WINDOW_BIT,
-        EGL_RED_SIZE,        8,
-        EGL_GREEN_SIZE,      8,
-        EGL_BLUE_SIZE,       8,
-        EGL_ALPHA_SIZE,      8,
-        EGL_NONE
+            EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT,
+            EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+            EGL_RED_SIZE, 8,
+            EGL_GREEN_SIZE, 8,
+            EGL_BLUE_SIZE, 8,
+            EGL_ALPHA_SIZE, 8,
+            EGL_NONE
     };
     EGLConfig config;
     EGLint numConfigs = 0;
@@ -33,8 +33,8 @@ bool EglContext::init(ANativeWindow* window) {
     }
 
     const EGLint contextAttribs[] = {
-        EGL_CONTEXT_CLIENT_VERSION, 3,
-        EGL_NONE
+            EGL_CONTEXT_CLIENT_VERSION, 3,
+            EGL_NONE
     };
     context_ = eglCreateContext(display_, config, EGL_NO_CONTEXT, contextAttribs);
     if (context_ == EGL_NO_CONTEXT) {
@@ -69,6 +69,6 @@ void EglContext::destroy() {
         eglTerminate(display_);
     }
     display_ = EGL_NO_DISPLAY;
-    context_  = EGL_NO_CONTEXT;
-    surface_  = EGL_NO_SURFACE;
+    context_ = EGL_NO_CONTEXT;
+    surface_ = EGL_NO_SURFACE;
 }
