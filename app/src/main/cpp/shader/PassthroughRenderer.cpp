@@ -20,6 +20,8 @@ uniform vec2 uCropOffset;
 out vec2 vTexCoord;
 void main() {
     gl_Position = vec4(aPosition, 0.0, 1.0);
+    // uCropScale/uCropOffset must be applied before uTexMatrix because the crop
+    // lives in the pre-rotation UV space that SurfaceTexture's transform expects.
     vec2 uv = aTexCoord * uCropScale + uCropOffset;
     vTexCoord = (uTexMatrix * vec4(uv, 0.0, 1.0)).xy;
 }
@@ -83,7 +85,7 @@ bool PassthroughRenderer::init(GLuint oesTextureId) {
 void PassthroughRenderer::setViewport(int camW, int camH, int surfW, int surfH) {
     float scaleW = static_cast<float>(surfW) / static_cast<float>(camW);
     float scaleH = static_cast<float>(surfH) / static_cast<float>(camH);
-    float renderScale = std::max(scaleW, scaleH);  // center crop: zoom to fill
+    float renderScale = std::max(scaleW, scaleH);  // fill surface with no letterbox; excess is cropped.
     cropScaleX_ = scaleW / renderScale;
     cropScaleY_ = scaleH / renderScale;
     cropOffsetX_ = (1.0f - cropScaleX_) * 0.5f;

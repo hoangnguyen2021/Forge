@@ -43,6 +43,7 @@ bool EglContext::init(ANativeWindow *window) {
         return false;
     }
 
+    // EGL addref's the window internally; caller may release their ref after this.
     surface_ = eglCreateWindowSurface(display_, config, window, nullptr);
     if (surface_ == EGL_NO_SURFACE) {
         LOGE("eglCreateWindowSurface failed: 0x%x", eglGetError());

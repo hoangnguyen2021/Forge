@@ -32,7 +32,7 @@ Java_app_honguyen_forge_engine_ForgeEngine_nativeSurfaceCreated(JNIEnv *env, job
         LOGE("EGL init failed");
         gEglContext.reset();
     }
-    ANativeWindow_release(window);
+    ANativeWindow_release(window);  // EGL holds its own ref; safe to drop ours now.
 }
 
 // Must be called after nativeSurfaceCreated — requires EGL context to be current.
@@ -69,7 +69,7 @@ Java_app_honguyen_forge_engine_ForgeEngine_nativeDrawFrame(JNIEnv *env, jobject 
     jfloat *mat = env->GetFloatArrayElements(texMatrix, nullptr);
     glClear(GL_COLOR_BUFFER_BIT);
     gRenderer->draw(mat);
-    env->ReleaseFloatArrayElements(texMatrix, mat, JNI_ABORT);
+    env->ReleaseFloatArrayElements(texMatrix, mat, JNI_ABORT);  // read-only; skip copy-back.
     gEglContext->swapBuffers();
 }
 

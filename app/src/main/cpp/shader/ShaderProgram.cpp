@@ -43,6 +43,7 @@ GLuint linkProgram(GLuint vert, GLuint frag) {
         glDeleteProgram(program);
         program = 0;
     }
+    // Program retains shader objects after linking; deleting here frees the compiler artefacts.
     glDeleteShader(vert);
     glDeleteShader(frag);
     return program;
