@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p /Users/hoang/AndroidStudioProjects/SmartLive/app/src/main/java/app/honguyen/forge/ui/theme)",
+      "Bash(mv /Users/hoang/AndroidStudioProjects/SmartLive/app/src/main/java/app/honguyen/smartlive/ui/theme/* /Users/hoang/AndroidStudioProjects/SmartLive/app/src/main/java/app/honguyen/forge/ui/theme/)",
+      "Bash(mv /Users/hoang/AndroidStudioProjects/SmartLive/app/src/main/java/app/honguyen/smartlive/MainActivity.kt /Users/hoang/AndroidStudioProjects/SmartLive/app/src/main/java/app/honguyen/forge/)",
+      "Bash(rm -rf /Users/hoang/AndroidStudioProjects/SmartLive/app/src/main/java/app/honguyen/smartlive)"
+    ]
+  }
+}

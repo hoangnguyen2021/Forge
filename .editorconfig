@@ -1,0 +1,8 @@
+root = true
+
+[*.{kt,kts}]
+ktlint_code_style=ktlint_official
+
+# Allow PascalCase Composables
+ktlint_standard_function-naming = disabled
+ktlint_standard_multiline-expression-wrapping = disabled
