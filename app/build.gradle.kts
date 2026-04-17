@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
     alias(libs.plugins.room)
     alias(libs.plugins.jetbrains.kotlin.serialization)
     alias(libs.plugins.detekt)
@@ -80,15 +81,16 @@ dependencies {
     implementation(libs.room.runtime)
     ksp(libs.room.compiler)
 
-    // DI - Koin
-    implementation(libs.bundles.koin)
+    // DI - Hilt
+    implementation(libs.bundles.hilt)
+    ksp(libs.hilt.compiler)
 
     // Navigation
     implementation(libs.androidx.compose.navigation)
     implementation(libs.kotlinx.serialization.json)
 
     // Allow use of java.time.Instant below API 26
-    coreLibraryDesugaring(libs.desugar.jdk.libs)
+    coreLibraryDesugaring(libs.desugarJdkLibs)
 
     // Logging
     implementation(libs.timber)
