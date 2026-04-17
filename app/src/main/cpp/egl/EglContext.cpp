@@ -11,7 +11,7 @@ bool EglContext::init(ANativeWindow *window) {
         LOGE("eglGetDisplay failed");
         return false;
     }
-    if (!eglInitialize(display_, nullptr, nullptr)) {
+    if (eglInitialize(display_, nullptr, nullptr) == EGL_FALSE) {
         LOGE("eglInitialize failed: 0x%x", eglGetError());
         return false;
     }
@@ -27,7 +27,8 @@ bool EglContext::init(ANativeWindow *window) {
     };
     EGLConfig config;
     EGLint numConfigs = 0;
-    if (!eglChooseConfig(display_, configAttribs, &config, 1, &numConfigs) || numConfigs == 0) {
+    if (eglChooseConfig(display_, configAttribs, &config, 1, &numConfigs) == EGL_FALSE ||
+        numConfigs == 0) {
         LOGE("eglChooseConfig failed: 0x%x", eglGetError());
         return false;
     }
@@ -48,7 +49,7 @@ bool EglContext::init(ANativeWindow *window) {
         return false;
     }
 
-    if (!eglMakeCurrent(display_, surface_, surface_, context_)) {
+    if (eglMakeCurrent(display_, surface_, surface_, context_) == EGL_FALSE) {
         LOGE("eglMakeCurrent failed: 0x%x", eglGetError());
         return false;
     }
@@ -64,8 +65,12 @@ void EglContext::swapBuffers() {
 void EglContext::destroy() {
     if (display_ != EGL_NO_DISPLAY) {
         eglMakeCurrent(display_, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-        if (context_ != EGL_NO_CONTEXT) eglDestroyContext(display_, context_);
-        if (surface_ != EGL_NO_SURFACE) eglDestroySurface(display_, surface_);
+        if (context_ != EGL_NO_CONTEXT) {
+            eglDestroyContext(display_, context_);
+        }
+        if (surface_ != EGL_NO_SURFACE) {
+            eglDestroySurface(display_, surface_);
+        }
         eglTerminate(display_);
     }
     display_ = EGL_NO_DISPLAY;

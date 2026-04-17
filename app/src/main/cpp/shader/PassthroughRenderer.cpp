@@ -3,6 +3,8 @@
 #include <GLES2/gl2ext.h>
 #include <android/log.h>
 #include <algorithm>
+#include <array>
+#include <cstddef>
 
 #define TAG "PassthroughRenderer"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  TAG, __VA_ARGS__)
@@ -35,12 +37,18 @@ void main() {
 }
 )GLSL";
 
-// Interleaved xy + uv, fullscreen triangle strip
-static constexpr float kQuad[] = {
-        -1.0f, -1.0f, 0.0f, 0.0f,
-        1.0f, -1.0f, 1.0f, 0.0f,
-        -1.0f, 1.0f, 0.0f, 1.0f,
-        1.0f, 1.0f, 1.0f, 1.0f,
+struct QuadVertex {
+    float x, y;
+    float u, v;
+};
+
+static constexpr std::array<QuadVertex, 4> kQuad = {
+        {
+                {-1.0f, -1.0f, 0.0f, 0.0f},
+                {1.0f, -1.0f, 1.0f, 0.0f},
+                {-1.0f, 1.0f, 0.0f, 1.0f},
+                {1.0f, 1.0f, 1.0f, 1.0f},
+        }
 };
 
 bool PassthroughRenderer::init(GLuint oesTextureId) {
@@ -48,10 +56,14 @@ bool PassthroughRenderer::init(GLuint oesTextureId) {
 
     GLuint vert = compileShader(GL_VERTEX_SHADER, kVertSrc);
     GLuint frag = compileShader(GL_FRAGMENT_SHADER, kFragSrc);
-    if (!vert || !frag) return false;
+    if (vert == 0 || frag == 0) {
+        return false;
+    }
 
     program_ = linkProgram(vert, frag);
-    if (!program_) return false;
+    if (program_ == 0) {
+        return false;
+    }
 
     uTexMatrix_ = glGetUniformLocation(program_, "uTexMatrix");
     uTexture_ = glGetUniformLocation(program_, "uTexture");
@@ -60,7 +72,8 @@ bool PassthroughRenderer::init(GLuint oesTextureId) {
 
     glGenBuffers(1, &vbo_);
     glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(kQuad), kQuad, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(kQuad), kQuad.data(), GL_STATIC_DRAW);
+    static_assert(sizeof(QuadVertex) == 4 * sizeof(float), "QuadVertex layout mismatch");
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     LOGI("initialized");
@@ -68,8 +81,8 @@ bool PassthroughRenderer::init(GLuint oesTextureId) {
 }
 
 void PassthroughRenderer::setViewport(int camW, int camH, int surfW, int surfH) {
-    float scaleW = static_cast<float>(surfW) / camW;
-    float scaleH = static_cast<float>(surfH) / camH;
+    float scaleW = static_cast<float>(surfW) / static_cast<float>(camW);
+    float scaleH = static_cast<float>(surfH) / static_cast<float>(camH);
     float renderScale = std::max(scaleW, scaleH);  // center crop: zoom to fill
     cropScaleX_ = scaleW / renderScale;
     cropScaleY_ = scaleH / renderScale;
@@ -79,7 +92,7 @@ void PassthroughRenderer::setViewport(int camW, int camH, int surfW, int surfH) 
          camW, camH, surfW, surfH, cropScaleX_, cropScaleY_);
 }
 
-void PassthroughRenderer::draw(const float *texMatrix4x4) {
+void PassthroughRenderer::draw(const float *texMatrix4x4) const {
     glUseProgram(program_);
 
     glActiveTexture(GL_TEXTURE0);
@@ -91,10 +104,11 @@ void PassthroughRenderer::draw(const float *texMatrix4x4) {
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo_);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), nullptr);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(QuadVertex),
+                          reinterpret_cast<const void *>(offsetof(QuadVertex, x)));
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float),
-                          reinterpret_cast<const void *>(2 * sizeof(float)));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(QuadVertex),
+                          reinterpret_cast<const void *>(offsetof(QuadVertex, u)));
 
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
@@ -104,11 +118,11 @@ void PassthroughRenderer::draw(const float *texMatrix4x4) {
 }
 
 void PassthroughRenderer::destroy() {
-    if (vbo_) {
+    if (vbo_ != 0) {
         glDeleteBuffers(1, &vbo_);
         vbo_ = 0;
     }
-    if (program_) {
+    if (program_ != 0) {
         glDeleteProgram(program_);
         program_ = 0;
     }

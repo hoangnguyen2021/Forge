@@ -18,13 +18,13 @@ static std::unique_ptr<PassthroughRenderer> gRenderer;
 extern "C" {
 
 JNIEXPORT jstring JNICALL
-Java_app_honguyen_forge_engine_ForgeEngine_nativeVersion(JNIEnv *env, jobject) {
+Java_app_honguyen_forge_engine_ForgeEngine_nativeVersion(JNIEnv *env, jobject thiz) {
     LOGI("native layer initialized");
     return env->NewStringUTF("Forge Engine v0.1 | C++17 | OpenGL ES 3.1");
 }
 
 JNIEXPORT void JNICALL
-Java_app_honguyen_forge_engine_ForgeEngine_nativeSurfaceCreated(JNIEnv *env, jobject,
+Java_app_honguyen_forge_engine_ForgeEngine_nativeSurfaceCreated(JNIEnv *env, jobject thiz,
                                                                 jobject surface) {
     ANativeWindow *window = ANativeWindow_fromSurface(env, surface);
     gEglContext = std::make_unique<EglContext>();
@@ -38,7 +38,7 @@ Java_app_honguyen_forge_engine_ForgeEngine_nativeSurfaceCreated(JNIEnv *env, job
 // Must be called after nativeSurfaceCreated — requires EGL context to be current.
 // Returns the GL texture ID for Kotlin to wrap in a SurfaceTexture, or -1 on failure.
 JNIEXPORT jint JNICALL
-Java_app_honguyen_forge_engine_ForgeEngine_nativeCreateOesTexture(JNIEnv *, jobject) {
+Java_app_honguyen_forge_engine_ForgeEngine_nativeCreateOesTexture(JNIEnv *env, jobject thiz) {
     GLuint texId = 0;
     glGenTextures(1, &texId);
     glBindTexture(GL_TEXTURE_EXTERNAL_OES, texId);
@@ -61,9 +61,11 @@ Java_app_honguyen_forge_engine_ForgeEngine_nativeCreateOesTexture(JNIEnv *, jobj
 }
 
 JNIEXPORT void JNICALL
-Java_app_honguyen_forge_engine_ForgeEngine_nativeDrawFrame(JNIEnv *env, jobject,
+Java_app_honguyen_forge_engine_ForgeEngine_nativeDrawFrame(JNIEnv *env, jobject thiz,
                                                            jfloatArray texMatrix) {
-    if (!gEglContext || !gRenderer) return;
+    if (!gEglContext || !gRenderer) {
+        return;
+    }
     jfloat *mat = env->GetFloatArrayElements(texMatrix, nullptr);
     glClear(GL_COLOR_BUFFER_BIT);
     gRenderer->draw(mat);
@@ -73,12 +75,14 @@ Java_app_honguyen_forge_engine_ForgeEngine_nativeDrawFrame(JNIEnv *env, jobject,
 
 JNIEXPORT void JNICALL
 Java_app_honguyen_forge_engine_ForgeEngine_nativeSetViewport(
-        JNIEnv *, jobject, jint camW, jint camH, jint surfW, jint surfH) {
-    if (gRenderer) gRenderer->setViewport(camW, camH, surfW, surfH);
+        JNIEnv *env, jobject thiz, jint camW, jint camH, jint surfW, jint surfH) {
+    if (gRenderer) {
+        gRenderer->setViewport(camW, camH, surfW, surfH);
+    }
 }
 
 JNIEXPORT void JNICALL
-Java_app_honguyen_forge_engine_ForgeEngine_nativeSurfaceDestroyed(JNIEnv *, jobject) {
+Java_app_honguyen_forge_engine_ForgeEngine_nativeSurfaceDestroyed(JNIEnv *env, jobject thiz) {
     gRenderer.reset();
     gEglContext.reset();
     LOGI("EGL context destroyed");

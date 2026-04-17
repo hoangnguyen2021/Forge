@@ -7,7 +7,10 @@ Checks: >
   -readability-magic-numbers,
   -readability-identifier-length,
   -cppcoreguidelines-avoid-magic-numbers,
-  -bugprone-easily-swappable-parameters
+  -bugprone-easily-swappable-parameters,
+  -readability-uppercase-literal-suffix,
+  -modernize-avoid-c-arrays,
+  -performance-no-int-to-ptr
 
 CheckOptions:
   - key: readability-identifier-naming.ClassCase

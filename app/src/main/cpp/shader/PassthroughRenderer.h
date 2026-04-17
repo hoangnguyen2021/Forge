@@ -10,7 +10,7 @@ public:
 
     void setViewport(int cameraPortraitW, int cameraPortraitH, int surfaceW, int surfaceH);
 
-    void draw(const float *texMatrix4x4);
+    void draw(const float* texMatrix4x4) const;
 
     void destroy();
 

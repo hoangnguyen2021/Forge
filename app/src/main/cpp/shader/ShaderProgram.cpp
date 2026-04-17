@@ -14,7 +14,7 @@ GLuint compileShader(GLenum type, std::string_view src) {
 
     GLint status = 0;
     glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
-    if (!status) {
+    if (status == GL_FALSE) {
         GLint logLen = 0;
         glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLen);
         std::vector<char> log(logLen);
@@ -34,7 +34,7 @@ GLuint linkProgram(GLuint vert, GLuint frag) {
 
     GLint status = 0;
     glGetProgramiv(program, GL_LINK_STATUS, &status);
-    if (!status) {
+    if (status == GL_FALSE) {
         GLint logLen = 0;
         glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logLen);
         std::vector<char> log(logLen);
