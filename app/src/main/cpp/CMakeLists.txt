@@ -12,6 +12,8 @@ find_library(GLESv3-lib GLESv3)
 add_library(forge_engine SHARED
     forge_jni.cpp
     egl/EglContext.cpp
+    shader/ShaderProgram.cpp
+    shader/PassthroughRenderer.cpp
 )
 
 target_link_libraries(forge_engine

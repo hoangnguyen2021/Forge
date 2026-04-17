@@ -11,6 +11,8 @@ object ForgeEngine {
     external fun nativeVersion(): String
 
     external fun nativeSurfaceCreated(surface: Surface)
-    external fun nativeDrawFrame()
+    external fun nativeCreateOesTexture(): Int
+    external fun nativeSetViewport(cameraPortraitW: Int, cameraPortraitH: Int, surfaceW: Int, surfaceH: Int)
+    external fun nativeDrawFrame(texMatrix: FloatArray)
     external fun nativeSurfaceDestroyed()
 }
