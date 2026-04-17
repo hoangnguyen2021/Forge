@@ -1,7 +1,7 @@
 package app.honguyen.forge
 
+import org.junit.Assert.assertEquals
 import org.junit.Test
-import org.junit.Assert.*
 
 class ExampleUnitTest {
     @Test
