@@ -6,15 +6,19 @@
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
 
 GLuint compileShader(GLenum type, std::string_view src) {
+    // Allocate a shader object on the GPU (vertex or fragment depending on type).
     GLuint shader = glCreateShader(type);
     const char *srcPtr = src.data();
     auto srcLen = static_cast<GLint>(src.size());
+    // Upload the GLSL source string to the GPU driver.
     glShaderSource(shader, 1, &srcPtr, &srcLen);
+    // Driver compiles the source to GPU machine code.
     glCompileShader(shader);
 
     GLint status = 0;
     glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
     if (status == GL_FALSE) {
+        // Read the compiler error log — equivalent to a compiler error in your terminal.
         GLint logLen = 0;
         glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLen);
         std::vector<char> log(logLen);
@@ -27,7 +31,9 @@ GLuint compileShader(GLenum type, std::string_view src) {
 }
 
 GLuint linkProgram(GLuint vert, GLuint frag) {
+    // Allocate a program object — the final GPU executable.
     GLuint program = glCreateProgram();
+    // Attach both shaders, then link — like a linker combining .o files.
     glAttachShader(program, vert);
     glAttachShader(program, frag);
     glLinkProgram(program);
