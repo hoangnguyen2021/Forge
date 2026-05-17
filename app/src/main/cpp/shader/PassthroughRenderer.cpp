@@ -14,75 +14,76 @@
 // Its only job is to pass the screen position straight through and
 // compute the texture coordinate that the fragment shader will sample.
 static constexpr std::string_view kVertSrc = R"GLSL(
-#version 300 es
+    #version 300 es
 
-// --- Attributes: per-vertex inputs from CPU memory (uploaded into the VBO at init), different
-// value for each of the 4 corners.
-// layout(location = N) pins each to a slot number, must match the slot number passed to
-// glVertexAttribPointer in draw().
-layout(location = 0) in vec2 aPosition;  // screen coordinate of this corner in NDC (-1..1)
-layout(location = 1) in vec2 aTexCoord;  // which part of the camera image maps to this corner (UV 0..1)
+    // --- Attributes: per-vertex inputs from CPU memory, different value for each of the 4 corners.
+    // layout(location = N) pins each to a slot number, must match the slot number passed to
+    // glVertexAttribPointer in draw().
+    // NDC screen coordinate of this corner: where to draw on screen (-1..1)
+    layout(location = 0) in vec2 aPosition;
+    // UV coordinate into the camera image: where to sample the camera image (0..1)
+    layout(location = 1) in vec2 aTexCoord;
 
-// --- Uniforms: constant across all 4 vertices, set from the CPU via glUniform* before each draw.
-uniform mat4 uTexMatrix;   // encodes whatever rotation/flip the camera hardware applied to the buffer
-uniform vec2 uCropScale;   // shrinks UVs so only the center region of the camera image is used
-uniform vec2 uCropOffset;  // shifts the shrunk UV window to re-center it
+    // --- Uniforms: constant across all 4 vertices.
+    uniform mat4 uTexMatrix;   // encodes whatever rotation/flip the camera hardware applied to the buffer
+    uniform vec2 uCropScale;   // shrinks UVs so only the center region of the camera image is used
+    uniform vec2 uCropOffset;  // shifts the shrunk UV window to re-center it
 
-// --- Varying: output to the fragment shader.
-// The GPU interpolates this across every pixel inside the triangle using barycentric coordinates —
-// each pixel gets a weight (α, β, γ) for each corner that sums to 1.0, and its vTexCoord is
-// α*A + β*B + γ*C. A pixel at corner A gets exactly A's value; a pixel dead center gets the
-// average. This happens automatically in the rasterizer, with no extra code needed.
-out vec2 vTexCoord;
+    // --- Varying: output to the fragment shader.
+    // The GPU interpolates this across every pixel inside the triangle using barycentric coordinates —
+    // each pixel gets a weight (α, β, γ) for each corner that sums to 1.0, and its vTexCoord is
+    // α*A + β*B + γ*C. A pixel at corner A gets exactly A's value; a pixel dead center gets the
+    // average. This happens automatically in the rasterizer, with no extra code needed.
+    out vec2 vTexCoord;
 
-void main() {
-    // required output: where this vertex lands on screen.
-    // aPosition is already in NDC so no transformation is needed — pass it straight through.
-    // vec4(aPosition, 0.0, 1.0) expands vec2 → vec4: z=0 (no depth), w=1 (required for a point).
-    gl_Position = vec4(aPosition, 0.0, 1.0);
+    void main() {
+        // required output: where this vertex lands on screen.
+        // aPosition is already in NDC so no transformation is needed — pass it straight through.
+        // vec4(aPosition, 0.0, 1.0) expands vec2 → vec4: z=0 (no depth), w=1 (required for a point).
+        gl_Position = vec4(aPosition, 0.0, 1.0);
 
-    // Step 1 — crop: shrink the 0..1 UV range down to the center sub-region of the camera image.
-    // uCropScale/uCropOffset must be applied before uTexMatrix because the crop
-    // lives in the pre-rotation UV space that SurfaceTexture's transform expects.
-    vec2 uv = aTexCoord * uCropScale + uCropOffset;
+        // Step 1 — crop: shrink the 0..1 UV range down to the center sub-region of the camera image.
+        // uCropScale/uCropOffset must be applied before uTexMatrix because the crop
+        // lives in the pre-rotation UV space that SurfaceTexture's transform expects.
+        vec2 uv = aTexCoord * uCropScale + uCropOffset;
 
-    // Step 2 — rotate/flip: apply SurfaceTexture's matrix to handle device orientation.
-    // uv must be promoted to vec4 (w=1) for the mat4 multiply, then we extract .xy back out.
-    vTexCoord = (uTexMatrix * vec4(uv, 0.0, 1.0)).xy;
-}
+        // Step 2 — rotate/flip: apply SurfaceTexture's matrix to handle device orientation.
+        // uv must be promoted to vec4 (w=1) for the mat4 multiply, then we extract .xy back out.
+        vTexCoord = (uTexMatrix * vec4(uv, 0.0, 1.0)).xy;
+    }
 )GLSL";
 
 // Fragment shader: runs once per pixel covered by the quad.
 // Receives the interpolated vTexCoord from the vertex shader and samples the camera texture.
 // The result is written to fragColor, which the GPU writes to the framebuffer for that pixel.
 static constexpr std::string_view kFragSrc = R"GLSL(
-#version 300 es
+    #version 300 es
 
-// GL_OES_EGL_image_external_essl3 must be explicitly enabled to use samplerExternalOES.
-#extension GL_OES_EGL_image_external_essl3 : require
+    // GL_OES_EGL_image_external_essl3 must be explicitly enabled to use samplerExternalOES.
+    #extension GL_OES_EGL_image_external_essl3 : require
 
-// Declares the default float precision for this shader.
-// mediump (medium precision) is the standard choice for fragment shaders on mobile —
-// high enough for color math, low enough to run fast on mobile GPUs.
-precision mediump float;
+    // Declares the default float precision for this shader.
+    // mediump (medium precision) is the standard choice for fragment shaders on mobile —
+    // high enough for color math, low enough to run fast on mobile GPUs.
+    precision mediump float;
 
-// --- Varying input: interpolated value passed in from the vertex shader, one per pixel.
-in vec2 vTexCoord;  // UV coordinate computed per-corner in kVertSrc, interpolated across the triangle
+    // --- Varying input: interpolated value passed in from the vertex shader, one per pixel.
+    in vec2 vTexCoord;  // UV coordinate computed per-corner in kVertSrc, interpolated across the triangle
 
-// --- Uniform: the camera texture, constant for the entire draw call.
-// samplerExternalOES is a special sampler for OES textures (fed by Android's SurfaceTexture).
-// Unlike a regular sampler2D, it lets the driver handle YUV→RGB conversion internally —
-// camera hardware produces YUV buffers, but shaders expect RGB, so the driver bridges the gap.
-uniform samplerExternalOES uTexture;
+    // --- Uniform: the camera texture, constant for the entire draw call.
+    // samplerExternalOES is a special sampler for OES textures (fed by Android's SurfaceTexture).
+    // Unlike a regular sampler2D, it lets the driver handle YUV→RGB conversion internally —
+    // camera hardware produces YUV buffers, but shaders expect RGB, so the driver bridges the gap.
+    uniform samplerExternalOES uTexture;
 
-// --- Output: the final RGBA color written to the framebuffer for this pixel.
-out vec4 fragColor;
+    // --- Output: the final RGBA color written to the framebuffer for this pixel.
+    out vec4 fragColor;
 
-void main() {
-    // Sample the camera texture at the UV coordinate this pixel received from the vertex shader.
-    // texture() returns a vec4 (RGBA). Since the camera image is opaque, alpha will always be 1.
-    fragColor = texture(uTexture, vTexCoord);
-}
+    void main() {
+        // Sample the camera texture at the UV coordinate this pixel received from the vertex shader.
+        // texture() returns a vec4 (RGBA). Since the camera image is opaque, alpha will always be 1.
+        fragColor = texture(uTexture, vTexCoord);
+    }
 )GLSL";
 
 // Each vertex of the quad carries two pieces of data: a screen position and a texture coordinate.

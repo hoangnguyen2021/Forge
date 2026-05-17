@@ -13,27 +13,51 @@ import android.view.Surface
 import timber.log.Timber
 import kotlin.math.abs
 
+// Manages the Camera2 lifecycle: opening the back camera, starting a repeating preview,
+// and tearing everything down cleanly.
+//
+// Camera2 is callback-based — it delivers results asynchronously via a Handler rather than
+// suspending/blocking. A dedicated HandlerThread keeps all camera callbacks off the main thread
+// so the UI is never blocked by camera work.
+//
+// Frame flow:
+//   Camera hardware → Surface (Camera2 output target)
+//                   → SurfaceTexture (wraps the Surface, makes frames available as an OES texture)
+//                   → PassthroughRenderer samples the OES texture each frame via OpenGL
 class Camera2Session(private val context: Context) {
 
-    private val cameraThread = HandlerThread("CameraThread").also { it.start() }
+    // Dedicated background thread with a Looper (message queue) so Camera2 can deliver
+    // callbacks (onOpened, onConfigured, frame notifications) without touching the main thread.
+    private val cameraThread = HandlerThread(CAMERA_THREAD_NAME).also { it.start() }
+
+    // Handler tied to cameraThread's Looper — passed to Camera2 so it knows which thread
+    // to post its callbacks onto.
     private val cameraHandler = Handler(cameraThread.looper)
 
-    private var cameraDevice: CameraDevice? = null
-    private var captureSession: CameraCaptureSession? = null
+    private var cameraDevice: CameraDevice? = null       // the opened camera hardware handle
+    private var captureSession: CameraCaptureSession? = null  // the active streaming session
 
+    // Opens the back camera and starts streaming frames into the provided Surface.
+    // The Surface is backed by a SurfaceTexture, making each frame available as an OES texture.
+    // All callbacks are delivered on cameraThread, not the main thread.
     @SuppressLint("MissingPermission")
     fun open(surface: Surface) {
         val manager = context.getSystemService(CameraManager::class.java)
+
+        // Find the back-facing camera ID. Camera2 identifies cameras by string IDs, not enums.
         val cameraId = manager.cameraIdList.firstOrNull { id ->
             manager.getCameraCharacteristics(id)
                 .get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK
         } ?: return Timber.e("No back camera found")
 
+        // openCamera is async — it returns immediately and delivers the result via StateCallback
+        // on cameraHandler's thread. onOpened fires when the hardware is ready to use.
         manager.openCamera(cameraId, object : CameraDevice.StateCallback() {
             override fun onOpened(camera: CameraDevice) {
                 cameraDevice = camera
                 startPreview(camera, surface)
             }
+            // onDisconnected fires if another app takes the camera or the device is unplugged.
             override fun onDisconnected(camera: CameraDevice) = camera.close()
             override fun onError(camera: CameraDevice, error: Int) {
                 Timber.e("Camera error: $error")
@@ -42,17 +66,28 @@ class Camera2Session(private val context: Context) {
         }, cameraHandler)
     }
 
+    // Creates a capture session and starts a repeating preview request.
+    // A CameraCaptureSession is the pipeline between the camera hardware and our output Surface.
+    // The repeating request tells the camera to keep producing frames continuously until stopped.
     @Suppress("DEPRECATION")
     private fun startPreview(camera: CameraDevice, surface: Surface) {
+        // createCaptureSession is also async — onConfigured fires when the pipeline is ready.
+        // We pass our Surface as the only output target: all frames go to this Surface.
         camera.createCaptureSession(
             listOf(surface),
             object : CameraCaptureSession.StateCallback() {
                 override fun onConfigured(session: CameraCaptureSession) {
                     captureSession = session
+
+                    // Build a capture request optimized for preview (auto-exposure, auto-focus, etc.)
+                    // and direct its output to our Surface.
                     val request = camera
                         .createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
                         .apply { addTarget(surface) }
                         .build()
+
+                    // setRepeatingRequest keeps the camera streaming frames indefinitely.
+                    // Each new frame is written into the Surface → SurfaceTexture → OES texture.
                     session.setRepeatingRequest(request, null, cameraHandler)
                     Timber.i("Camera preview started")
                 }
@@ -64,16 +99,23 @@ class Camera2Session(private val context: Context) {
         )
     }
 
+    // Stops the camera and releases all resources in reverse order of acquisition.
+    // Closing the session before the device prevents the driver from receiving requests
+    // on a device that is already being torn down.
     fun close() {
-        captureSession?.close()
+        captureSession?.close()   // stop the repeating request and release the pipeline
         captureSession = null
-        cameraDevice?.close()
+        cameraDevice?.close()     // release the camera hardware handle
         cameraDevice = null
-        cameraThread.quitSafely()
+        cameraThread.quitSafely() // drain pending messages then stop the thread's Looper
     }
 
     companion object {
+        private const val CAMERA_THREAD_NAME = "CameraThread"
+
         // Returns the best output size and sensor orientation for the back camera.
+        // "Best" means the size whose aspect ratio (after accounting for sensor rotation)
+        // is closest to the target surface dimensions — minimizing crop or letterbox.
         fun selectPreviewSize(context: Context, targetWidth: Int, targetHeight: Int): Pair<Size, Int> {
             val manager = context.getSystemService(CameraManager::class.java)
             val cameraId = manager.cameraIdList.firstOrNull { id ->
@@ -82,12 +124,19 @@ class Camera2Session(private val context: Context) {
             } ?: return Pair(Size(1920, 1080), 90)
 
             val characteristics = manager.getCameraCharacteristics(cameraId)
+
+            // sensorOrientation is the degrees the sensor is rotated relative to the device's
+            // natural orientation. On most phones this is 90° — the sensor is mounted sideways.
             val sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 90
             val map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)!!
+
+            // Query sizes supported for SurfaceTexture output (the format used for preview).
             val sizes = map.getOutputSizes(android.graphics.SurfaceTexture::class.java)
 
             val targetAspect = targetWidth.toFloat() / targetHeight.toFloat()
 
+            // If sensorOrientation is 90° or 270°, the camera's width and height are swapped
+            // relative to the screen — account for this before comparing aspect ratios.
             val best = sizes.minByOrNull { size ->
                 val (pW, pH) = if (sensorOrientation % 180 == 90)
                     size.height.toFloat() to size.width.toFloat()
