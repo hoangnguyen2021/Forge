@@ -105,39 +105,51 @@ static constexpr std::array<QuadVertex, 4> kQuad = {
 };
 
 bool PassthroughRenderer::init(GLuint oesTextureId) {
-    // Hold onto the OES texture ID created by SurfaceTexture on the Java side.
-    // We don't own this texture — we just sample from it each frame.
+    // Save the OES texture ID created by SurfaceTexture on the Java side.
+    // We don't own this texture — SurfaceTexture manages its lifetime — we just sample from it each frame.
     oesTexId_ = oesTextureId;
 
-    // Compile and link the two shaders into a single GPU program (see ShaderProgram.cpp).
+    // Step 1: compile each GLSL source string into a GPU shader object.
+    // compileShader sends the source to the GPU driver, which compiles it to GPU machine code —
+    // just like clang compiling a .cpp file. Returns 0 on failure (compile error logged inside).
     GLuint vert = compileShader(GL_VERTEX_SHADER, kVertSrc);
     GLuint frag = compileShader(GL_FRAGMENT_SHADER, kFragSrc);
     if (vert == 0 || frag == 0) {
         return false;
     }
 
+    // Step 2: link the two compiled shader objects into one GPU program.
+    // Linking resolves the interface between vertex outputs (vTexCoord) and fragment inputs,
+    // validates that types match, and produces a single executable the GPU can run.
+    // The analogy: compile .cpp → .o files, then link the .o files into a binary.
+    // After linking, vert and frag are intermediate artifacts (like .o files) and are deleted inside linkProgram.
     program_ = linkProgram(vert, frag);
     if (program_ == 0) {
         return false;
     }
 
-    // Look up the integer "slot" for each uniform variable declared in the GLSL source.
-    // These slots are stable for the lifetime of the program and are used in draw() to
-    // push CPU-side values (matrices, texture unit numbers) into the shader.
+    // Step 3: look up the integer slot for each uniform variable in the linked program.
+    // Uniforms are declared by name in GLSL, but the GPU assigns each an integer slot at link time.
+    // glGetUniformLocation queries that slot — caching it here avoids a name lookup every frame in draw().
     uTexMatrix_ = glGetUniformLocation(program_, "uTexMatrix");
-    uTexture_ = glGetUniformLocation(program_, "uTexture");
+    uTexture_   = glGetUniformLocation(program_, "uTexture");
     uCropScale_ = glGetUniformLocation(program_, "uCropScale");
-    uCropOffset_ = glGetUniformLocation(program_, "uCropOffset");
+    uCropOffset_= glGetUniformLocation(program_, "uCropOffset");
 
-    // Upload the quad geometry to a VBO (Vertex Buffer Object) — a buffer that lives on the GPU.
-    // Keeping vertex data on the GPU avoids re-uploading it from CPU memory every frame.
-    // GL_STATIC_DRAW is a hint: the data is written once and read many times, so the driver
-    // can place it in fast GPU memory.
-    glGenBuffers(1, &vbo_);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_);
+    // Step 4: upload the quad vertex data to a VBO (Vertex Buffer Object) on the GPU.
+    // A VBO is a buffer allocated in GPU memory — uploading once here means draw() can reuse it
+    // every frame without copying kQuad from CPU memory each time.
+    glGenBuffers(1, &vbo_);       // allocate a GPU buffer, store its ID in vbo_
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_);  // make vbo_ the active buffer so the next calls target it
+    // GL_STATIC_DRAW hints that data is written once and read many times,
+    // so the driver can place it in the fastest GPU memory tier.
     glBufferData(GL_ARRAY_BUFFER, sizeof(kQuad), kQuad.data(), GL_STATIC_DRAW);
+    // Compile-time check: QuadVertex must be exactly 4 floats with no padding,
+    // otherwise glVertexAttribPointer would compute wrong byte offsets and corrupt the geometry silently.
     static_assert(sizeof(QuadVertex) == 4 * sizeof(float), "QuadVertex layout mismatch");
-    glBindBuffer(GL_ARRAY_BUFFER, 0);  // unbind so later GL calls don't accidentally modify this buffer
+    // Unbind after upload — OpenGL is a global state machine, leaving a buffer bound
+    // risks later GL calls accidentally modifying it.
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     LOGI("initialized");
     return true;
@@ -146,17 +158,31 @@ bool PassthroughRenderer::init(GLuint oesTextureId) {
 // Computes the UV crop that makes the camera image fill the surface without letterboxing.
 // Strategy: scale the camera image up until its shorter side matches the surface, then
 // crop the overflow on the longer side — identical to CSS "background-size: cover".
-// The resulting cropScale/cropOffset are uploaded to the vertex shader each draw call.
+// Example: camera=1080x1920 (portrait), surface=1080x1080 (square):
+//   scaleW=1.0, scaleH=0.5625 → renderScale=1.0 → cropScaleY=0.5625, cropOffsetY=0.219
+//   → only the center 56.25% of the camera height is shown, equal amounts cropped top and bottom.
+// The resulting cropScale/cropOffset are uploaded as uniforms to the vertex shader each draw call.
 void PassthroughRenderer::setViewport(int camW, int camH, int surfW, int surfH) {
+    // How much would we need to scale the camera image to fill the surface in each axis independently?
     float scaleW = static_cast<float>(surfW) / static_cast<float>(camW);
     float scaleH = static_cast<float>(surfH) / static_cast<float>(camH);
-    float renderScale = std::max(scaleW, scaleH);  // fill surface with no letterbox; excess is cropped
-    // cropScale < 1.0 means we only use a centered sub-region of the camera's UV space.
+
+    // Pick the larger scale — the one that fills the surface completely with no letterbox.
+    // The other axis will overflow and get cropped rather than leaving empty bars.
+    float renderScale = std::max(scaleW, scaleH);
+
+    // cropScale is the fraction of the camera's UV range (0..1) we actually sample per axis.
+    // Dividing by renderScale normalizes so the filling axis gets 1.0 and the cropped axis gets < 1.0.
+    // In the vertex shader: uv = aTexCoord * uCropScale shrinks the 0..1 UV range to this fraction.
     cropScaleX_ = scaleW / renderScale;
     cropScaleY_ = scaleH / renderScale;
-    // Shift the sub-region to the center so equal amounts are cropped on both sides.
+
+    // Without an offset, the shrunken UV window would start at 0 and sample only one edge of the image.
+    // Adding half the unused portion as an offset re-centers the window so equal amounts are cropped
+    // on both sides. e.g. cropScaleY=0.5625 → offset=(1-0.5625)*0.5=0.219 → samples v=0.219..0.781.
     cropOffsetX_ = (1.0f - cropScaleX_) * 0.5f;
     cropOffsetY_ = (1.0f - cropScaleY_) * 0.5f;
+
     LOGI("viewport set: cam=%dx%d surf=%dx%d cropScale=(%.3f,%.3f)",
          camW, camH, surfW, surfH, cropScaleX_, cropScaleY_);
 }
@@ -165,49 +191,77 @@ void PassthroughRenderer::setViewport(int camW, int camH, int surfW, int surfH) 
 // texMatrix4x4 comes from SurfaceTexture.getTransformMatrix() — it encodes any rotation
 // or flip the camera hardware applied to the buffer, and must be re-fetched each frame.
 void PassthroughRenderer::draw(const float *texMatrix4x4) const {
-    // Activate our shader program — all subsequent GL state changes and draw calls use it.
+    // Make our shader program active. OpenGL is a global state machine — this single call means
+    // every subsequent GL operation and draw call uses our vertex + fragment shaders.
     glUseProgram(program_);
 
-    // Bind the camera texture to texture unit 0, then tell the shader uniform which unit to sample.
-    // The GPU has a fixed number of texture units (slots); you bind a texture to a slot, then
-    // point the sampler uniform at that slot number.
+    // --- Texture binding (3 steps) ---
+    // The GPU has multiple texture units (input ports), numbered 0, 1, 2...
+    // You bind a texture to a unit, then point the sampler uniform at that unit number.
+    // Step 1: select unit 0 as the active slot for the next bind call.
     glActiveTexture(GL_TEXTURE0);
+    // Step 2: plug our OES camera texture into the currently active unit (unit 0).
     glBindTexture(GL_TEXTURE_EXTERNAL_OES, oesTexId_);
-    glUniform1i(uTexture_, 0);  // "uTexture samples from unit 0"
+    // Step 3: tell the samplerExternalOES uniform in the fragment shader to read from unit 0.
+    // The sampler doesn't hold the texture itself — it holds the unit number to sample from.
+    glUniform1i(uTexture_, 0);
 
-    // Push the per-frame CPU values into the shader uniforms.
+    // --- Uniform uploads ---
+    // Push per-frame CPU values into the shader using the slot IDs cached in init().
+    // texMatrix4x4 changes every frame as SurfaceTexture delivers a new camera buffer.
+    // '1' = uploading one matrix, GL_FALSE = not transposed.
     glUniformMatrix4fv(uTexMatrix_, 1, GL_FALSE, texMatrix4x4);
+    // cropScale/cropOffset are stable until setViewport() is called again (e.g. on rotation).
     glUniform2f(uCropScale_, cropScaleX_, cropScaleY_);
     glUniform2f(uCropOffset_, cropOffsetX_, cropOffsetY_);
 
-    // Describe the vertex layout so the GPU knows how to read our VBO.
-    // glVertexAttribPointer tells the GPU: "for attribute slot N, read 2 floats per vertex,
-    // stride = sizeof(QuadVertex) bytes apart, starting at this byte offset into the buffer."
+    // --- Vertex layout description ---
+    // Tell the GPU how to unpack bytes from the VBO into vertex shader attributes.
+    // glVertexAttribPointer args: (slot, num_floats, type, normalized, stride, byte_offset)
+    //   slot       — must match layout(location = N) in the vertex shader
+    //   num_floats — how many floats to read per vertex for this attribute
+    //   stride     — how many bytes between the start of one vertex and the next (= sizeof(QuadVertex))
+    //   byte_offset — where in each vertex this attribute starts
     glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(0);  // activate slot 0 (off by default)
+    // Slot 0 = aPosition: starts at byte 0 (field x), reads 2 floats (x, y)
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(QuadVertex),
-                          reinterpret_cast<const void *>(offsetof(QuadVertex, x)));  // position
-    glEnableVertexAttribArray(1);
+                          reinterpret_cast<const void *>(offsetof(QuadVertex, x)));
+    glEnableVertexAttribArray(1);  // activate slot 1 (off by default)
+    // Slot 1 = aTexCoord: starts at byte 8 (field u, after x and y), reads 2 floats (u, v)
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(QuadVertex),
-                          reinterpret_cast<const void *>(offsetof(QuadVertex, u)));  // texcoord
+                          reinterpret_cast<const void *>(offsetof(QuadVertex, u)));
 
-    // Draw 4 vertices as a triangle strip — two triangles that together cover the full screen.
+    // --- Draw call ---
+    // GPU reads 4 vertices from the VBO, runs the vertex shader 4 times (once per corner),
+    // rasterizes 2 triangles covering the full screen, then runs the fragment shader once
+    // per covered pixel — potentially millions of times in parallel.
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
-    // Clean up: disable the attribute arrays and unbind the buffer so other draw calls
-    // don't accidentally inherit this state.
+    // --- Cleanup ---
+    // OpenGL state persists globally between draw calls. Disabling the attribute slots and
+    // unbinding the buffer ensures other renderers don't accidentally read from our VBO.
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-// Releases GPU resources owned by this renderer. The OES texture is not deleted here
-// because it was created externally (by SurfaceTexture) and is not ours to free.
+// Releases GPU resources allocated by this renderer in init().
+// Only frees what we own — the OES texture is intentionally not deleted here because
+// it was created externally by SurfaceTexture on the Java side and is not ours to free.
 void PassthroughRenderer::destroy() {
+    // Free the VBO that holds the quad vertex data on the GPU.
+    // The 0-check guards against double-free if destroy() is called more than once.
+    // Resetting to 0 after deletion marks the handle as invalid — 0 is GL's null/sentinel value.
     if (vbo_ != 0) {
         glDeleteBuffers(1, &vbo_);
         vbo_ = 0;
     }
+
+    // Free the linked shader program — this releases the compiled vertex + fragment shaders
+    // that the GPU driver allocated when we called linkProgram() in init().
+    // The individual shader objects (vert, frag) were already deleted inside linkProgram()
+    // after linking, so only the program handle remains to clean up here.
     if (program_ != 0) {
         glDeleteProgram(program_);
         program_ = 0;
