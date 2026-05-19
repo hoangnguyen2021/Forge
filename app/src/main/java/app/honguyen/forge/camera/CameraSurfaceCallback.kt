@@ -127,7 +127,7 @@ internal class CameraSurfaceCallback(
      */
     override fun surfaceDestroyed(holder: SurfaceHolder) {
         cameraSession?.close()
-        surfaceReleased = true   // must be set before release() to block any queued callbacks
+        surfaceReleased = true // must be set before release() to block any queued callbacks
         surfaceTexture?.release()
         ForgeEngine.nativeSurfaceDestroyed()
     }
