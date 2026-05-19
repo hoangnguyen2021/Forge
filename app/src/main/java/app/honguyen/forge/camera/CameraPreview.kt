@@ -24,11 +24,13 @@ fun CameraPreview(modifier: Modifier = Modifier) {
             SurfaceView(ctx).apply {
                 var cameraSession: Camera2Session? = null
                 var surfaceTexture: SurfaceTexture? = null
+                var surfaceReleased = false
 
                 holder.addCallback(object : SurfaceHolder.Callback {
                     // released in surfaceDestroyed — lint can't trace lifecycle across callbacks
                     @SuppressLint("Recycle")
                     override fun surfaceCreated(holder: SurfaceHolder) {
+                        surfaceReleased = false
                         ForgeEngine.nativeSurfaceCreated(holder.surface)
 
                         val texId = ForgeEngine.nativeCreateOesTexture()
@@ -36,6 +38,7 @@ fun CameraPreview(modifier: Modifier = Modifier) {
 
                         val st = SurfaceTexture(texId).also { surfaceTexture = it }
                         st.setOnFrameAvailableListener({ tex ->
+                            if (surfaceReleased) return@setOnFrameAvailableListener
                             tex.updateTexImage()
                             val texMatrix = FloatArray(16)
                             tex.getTransformMatrix(texMatrix)
@@ -80,6 +83,7 @@ fun CameraPreview(modifier: Modifier = Modifier) {
 
                     override fun surfaceDestroyed(holder: SurfaceHolder) {
                         cameraSession?.close()
+                        surfaceReleased = true
                         surfaceTexture?.release()
                         ForgeEngine.nativeSurfaceDestroyed()
                     }
