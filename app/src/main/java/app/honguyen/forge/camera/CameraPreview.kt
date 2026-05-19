@@ -1,5 +1,6 @@
 package app.honguyen.forge.camera
 
+import android.annotation.SuppressLint
 import android.graphics.SurfaceTexture
 import android.os.Handler
 import android.os.Looper
@@ -11,6 +12,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import app.honguyen.forge.engine.ForgeEngine
 
+// Sensor orientation is reported in degrees. If it is 90° or 270°, the sensor is mounted
+// sideways relative to the device's natural orientation, so width and height are swapped.
+private const val SENSOR_ORIENTATION_HALF_TURN = 180
+private const val SENSOR_ORIENTATION_QUARTER_TURN = 90
+
 @Composable
 fun CameraPreview(modifier: Modifier = Modifier) {
     AndroidView(
@@ -20,6 +26,8 @@ fun CameraPreview(modifier: Modifier = Modifier) {
                 var surfaceTexture: SurfaceTexture? = null
 
                 holder.addCallback(object : SurfaceHolder.Callback {
+                    // released in surfaceDestroyed — lint can't trace lifecycle across callbacks
+                    @SuppressLint("Recycle")
                     override fun surfaceCreated(holder: SurfaceHolder) {
                         ForgeEngine.nativeSurfaceCreated(holder.surface)
 
@@ -43,16 +51,28 @@ fun CameraPreview(modifier: Modifier = Modifier) {
                     ) {
                         val st = surfaceTexture ?: return
 
-                        val (size, sensorOrientation) = Camera2Session.selectPreviewSize(ctx, width, height)
+                        val (size, sensorOrientation) = Camera2Session.selectPreviewSize(
+                            context = ctx,
+                            targetWidth = width,
+                            targetHeight = height,
+                        )
                         st.setDefaultBufferSize(size.width, size.height)
 
                         // Compute effective portrait dimensions accounting for sensor rotation
-                        val (camPortraitW, camPortraitH) = if (sensorOrientation % 180 == 90)
+                        val isSideways =
+                            sensorOrientation % SENSOR_ORIENTATION_HALF_TURN == SENSOR_ORIENTATION_QUARTER_TURN
+                        val (camPortraitW, camPortraitH) = if (isSideways) {
                             size.height to size.width
-                        else
+                        } else {
                             size.width to size.height
+                        }
 
-                        ForgeEngine.nativeSetViewport(camPortraitW, camPortraitH, width, height)
+                        ForgeEngine.nativeSetViewport(
+                            cameraPortraitW = camPortraitW,
+                            cameraPortraitH = camPortraitH,
+                            surfaceW = width,
+                            surfaceH = height,
+                        )
 
                         cameraSession?.close()
                         cameraSession = Camera2Session(ctx).also { it.open(Surface(st)) }
