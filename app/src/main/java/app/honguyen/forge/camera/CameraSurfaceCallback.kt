@@ -35,7 +35,6 @@ private const val SENSOR_ORIENTATION_QUARTER_TURN = 90
 internal class CameraSurfaceCallback(
     private val context: Context,
 ) : SurfaceHolder.Callback {
-
     private var glThread: HandlerThread? = null
     private var glHandler: Handler? = null
 
