@@ -1,14 +1,14 @@
-#include "Engine.h"
+#include "RenderEngine.h"
 
 #include <GLES2/gl2ext.h>
 #include <android/log.h>
 
 #include "../CheckGl.h"
 
-#define TAG "Engine"
+#define TAG "RenderEngine"
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
 
-bool Engine::surfaceCreated(ANativeWindow* window) {
+bool RenderEngine::surfaceCreated(ANativeWindow* window) {
     egl_ = std::make_unique<EglContext>();
     if (!egl_->init(window)) {
         LOGE("EGL init failed");
@@ -18,7 +18,7 @@ bool Engine::surfaceCreated(ANativeWindow* window) {
     return true;
 }
 
-GLuint Engine::createOesTexture() {
+GLuint RenderEngine::createOesTexture() {
     GLuint texId = 0;
     glGenTextures(1, &texId);
     glBindTexture(GL_TEXTURE_EXTERNAL_OES, texId);
@@ -35,27 +35,27 @@ GLuint Engine::createOesTexture() {
         glDeleteTextures(1, &texId);
         return 0;
     }
-    CHECK_GL("Engine::createOesTexture");
+    CHECK_GL("RenderEngine::createOesTexture");
     return texId;
 }
 
-void Engine::setViewport(int camW, int camH, int surfW, int surfH) {
+void RenderEngine::setViewport(int camW, int camH, int surfW, int surfH) {
     if (renderer_) {
         renderer_->setViewport(camW, camH, surfW, surfH);
     }
 }
 
-void Engine::drawFrame(const float* texMatrix4x4) {
+void RenderEngine::drawFrame(const float* texMatrix4x4) {
     if (!egl_ || !renderer_) {
         return;
     }
     glClear(GL_COLOR_BUFFER_BIT);
     renderer_->draw(texMatrix4x4);
-    CHECK_GL("Engine::drawFrame");
+    CHECK_GL("RenderEngine::drawFrame");
     egl_->swapBuffers();
 }
 
-void Engine::surfaceDestroyed() {
+void RenderEngine::surfaceDestroyed() {
     renderer_.reset();
     egl_.reset();
 }

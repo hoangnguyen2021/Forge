@@ -3,12 +3,12 @@ package app.honguyen.forge.engine
 import android.view.Surface
 
 /**
- * Kotlin wrapper around the native C++ Engine. Each instance owns an opaque
- * handle to a heap-allocated C++ Engine and must be paired with a destroy()
+ * Kotlin wrapper around the native C++ RenderEngine. Each instance owns an opaque
+ * handle to a heap-allocated C++ RenderEngine and must be paired with a destroy()
  * call to free it. Methods are not thread-safe — call them on the same thread
  * that created the EGL context (typically the GL thread).
  */
-class ForgeEngine private constructor(
+class RenderEngine private constructor(
     private val handle: Long,
 ) {
     fun surfaceCreated(surface: Surface) = nativeSurfaceCreated(handle, surface)
@@ -33,7 +33,7 @@ class ForgeEngine private constructor(
             System.loadLibrary("forge_engine")
         }
 
-        fun create(): ForgeEngine = ForgeEngine(nativeCreate())
+        fun create(): RenderEngine = RenderEngine(nativeCreate())
 
         fun version(): String = nativeVersion()
 

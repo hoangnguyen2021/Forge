@@ -7,7 +7,7 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.view.Surface
 import android.view.SurfaceHolder
-import app.honguyen.forge.engine.ForgeEngine
+import app.honguyen.forge.engine.RenderEngine
 import java.util.concurrent.CountDownLatch
 
 // Sensor orientation is reported in degrees. If it is 90° or 270°, the sensor is mounted
@@ -39,7 +39,7 @@ internal class CameraSurfaceCallback(
     private var glHandler: Handler? = null
 
     // Only ever accessed on the GL thread
-    private var engine: ForgeEngine? = null
+    private var engine: RenderEngine? = null
     private var cameraSession: Camera2Session? = null
     private var surfaceTexture: SurfaceTexture? = null
     private val texMatrix = FloatArray(MATRIX_SIZE)
@@ -72,7 +72,7 @@ internal class CameraSurfaceCallback(
 
         glHandler?.post {
             // allocate the native engine and remember it for teardown
-            val eng = ForgeEngine.create().also { engine = it }
+            val eng = RenderEngine.create().also { engine = it }
 
             // create the EGL context on this thread, bound to the SurfaceHolder's Surface
             eng.surfaceCreated(holder.surface)

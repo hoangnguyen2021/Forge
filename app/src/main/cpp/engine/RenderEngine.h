@@ -8,7 +8,7 @@
 #include "../shader/PassthroughRenderer.h"
 
 // Owns the per-surface GL state (EGL context + renderer) and exposes the
-// operations the JNI layer needs. One Engine per camera preview surface;
+// operations the JNI layer needs. One RenderEngine per camera preview surface;
 // future consumers (encoder input surface, inference target) will share the
 // same EGL context but render into their own outputs.
 //
@@ -16,7 +16,7 @@
 // invoked surfaceDestroyed() on the GL thread. Without that, the implicit
 // unique_ptr cleanup would issue EGL/GL calls on whatever thread `delete`
 // lands on, with no current context.
-class Engine {
+class RenderEngine {
 public:
     bool surfaceCreated(ANativeWindow* window);
 
