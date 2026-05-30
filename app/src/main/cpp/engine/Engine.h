@@ -11,6 +11,11 @@
 // operations the JNI layer needs. One Engine per camera preview surface;
 // future consumers (encoder input surface, inference target) will share the
 // same EGL context but render into their own outputs.
+//
+// Lifecycle precondition: the destructor assumes the caller has already
+// invoked surfaceDestroyed() on the GL thread. Without that, the implicit
+// unique_ptr cleanup would issue EGL/GL calls on whatever thread `delete`
+// lands on, with no current context.
 class Engine {
 public:
     bool surfaceCreated(ANativeWindow* window);

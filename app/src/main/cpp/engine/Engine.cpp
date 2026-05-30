@@ -3,6 +3,8 @@
 #include <GLES2/gl2ext.h>
 #include <android/log.h>
 
+#include "../CheckGl.h"
+
 #define TAG "Engine"
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
 
@@ -33,6 +35,7 @@ GLuint Engine::createOesTexture() {
         glDeleteTextures(1, &texId);
         return 0;
     }
+    CHECK_GL("Engine::createOesTexture");
     return texId;
 }
 
@@ -48,6 +51,7 @@ void Engine::drawFrame(const float* texMatrix4x4) {
     }
     glClear(GL_COLOR_BUFFER_BIT);
     renderer_->draw(texMatrix4x4);
+    CHECK_GL("Engine::drawFrame");
     egl_->swapBuffers();
 }
 

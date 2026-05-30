@@ -1,5 +1,6 @@
 #include "PassthroughRenderer.h"
 #include "ShaderProgram.h"
+#include "../CheckGl.h"
 #include <GLES2/gl2ext.h>
 #include <android/log.h>
 #include <algorithm>
@@ -152,6 +153,7 @@ bool PassthroughRenderer::init(GLuint oesTextureId) {
     // risks later GL calls accidentally modifying it.
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
+    CHECK_GL("PassthroughRenderer::init");
     LOGI("initialized");
     return true;
 }
@@ -245,6 +247,8 @@ void PassthroughRenderer::draw(const float *texMatrix4x4) const {
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    CHECK_GL("PassthroughRenderer::draw");
 }
 
 // Releases GPU resources allocated by this renderer in init().
