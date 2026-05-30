@@ -17,38 +17,42 @@ import timber.log.Timber
 import java.util.concurrent.Executor
 import kotlin.math.abs
 
-// Manages the Camera2 lifecycle: opening the back camera, starting a repeating preview,
-// and tearing everything down cleanly.
-//
-// Camera2 is callback-based — it delivers results asynchronously via a Handler rather than
-// suspending/blocking. A dedicated HandlerThread keeps all camera callbacks off the main thread
-// so the UI is never blocked by camera work.
-//
-// Frame flow:
-//   Camera hardware → Surface (Camera2 output target)
-//                   → SurfaceTexture (wraps the Surface, makes frames available as an OES texture)
-//                   → PassthroughRenderer samples the OES texture each frame via OpenGL
+/*
+ * Manages the Camera2 lifecycle: opening the back camera, starting a repeating preview,
+ * and tearing everything down cleanly.
+ *
+ * Camera2 is callback-based — it delivers results asynchronously via a Handler rather than
+ * suspending/blocking. A dedicated HandlerThread keeps all camera callbacks off the main thread
+ * so the UI is never blocked by camera work.
+ *
+ * Frame flow:
+ *   Camera hardware → Surface (Camera2 output target)
+ *                   → SurfaceTexture (wraps the Surface, makes frames available as an OES texture)
+ *                   → PassthroughRenderer samples the OES texture each frame via OpenGL
+ */
 class Camera2Session(
     private val context: Context,
 ) : CameraSession {
     // Dedicated background thread with a Looper (message queue) so Camera2 can deliver
-    // callbacks (onOpened, onConfigured, frame notifications) without touching the main thread.
+    // callbacks without touching the main thread.
     private val cameraThread = HandlerThread(CAMERA_THREAD_NAME).also { it.start() }
 
-    // Handler tied to cameraThread's Looper — passed to Camera2 (API < 28) and used for
+    // API < 28: Handler tied to cameraThread's Looper — passed to Camera2 and used for
     // setRepeatingRequest which still takes a Handler on all API levels.
     private val cameraHandler = Handler(cameraThread.looper)
 
-    // Executor wrapping cameraHandler — required by SessionConfiguration API
-    // (API 28+). Posts callbacks onto the same cameraThread as the Handler.
+    // API 28+: Executor wrapping cameraHandler — required by SessionConfiguration API.
+    // Posts callbacks onto the same cameraThread as the Handler.
     private val cameraExecutor = Executor { command -> cameraHandler.post(command) }
 
     private var cameraDevice: CameraDevice? = null // the opened camera hardware handle
     private var captureSession: CameraCaptureSession? = null // the active streaming session
 
-    // Opens the back camera and starts streaming frames into the provided Surface.
-    // The Surface is backed by a SurfaceTexture, making each frame available as an OES texture.
-    // All callbacks are delivered on cameraThread, not the main thread.
+    /*
+     * Opens the back camera and starts streaming frames into the provided Surface.
+     * The Surface is backed by a SurfaceTexture, making each frame available as an OES texture.
+     * All callbacks are delivered on cameraThread.
+     */
     @SuppressLint("MissingPermission")
     override fun open(surface: Surface) {
         val manager = context.getSystemService(CameraManager::class.java)
@@ -60,19 +64,19 @@ class Camera2Session(
                 .get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK
         } ?: return Timber.e("No back camera found")
 
-        // openCamera is async — it returns immediately and delivers the result via StateCallback
-        // on cameraHandler's thread. onOpened fires when the hardware is ready to use.
         manager.openCamera(
             cameraId,
             object : CameraDevice.StateCallback() {
+                // when the hardware is ready to use
                 override fun onOpened(camera: CameraDevice) {
                     cameraDevice = camera
                     startPreview(camera, surface)
                 }
 
-                // onDisconnected fires if another app takes the camera or the device is unplugged.
+                // when another app takes the camera or the device is unplugged.
                 override fun onDisconnected(camera: CameraDevice) = camera.close()
 
+                // when the camera hits a fatal driver, service, or policy error.
                 override fun onError(
                     camera: CameraDevice,
                     error: Int,
@@ -81,13 +85,16 @@ class Camera2Session(
                     camera.close()
                 }
             },
+            // callbacks run on cameraHandler's thread
             cameraHandler,
         )
     }
 
-    // Creates a capture session and starts a repeating preview request.
-    // A CameraCaptureSession is the pipeline between the camera hardware and our output Surface.
-    // The repeating request tells the camera to keep producing frames continuously until stopped.
+    /*
+     * Creates a capture session and starts a repeating preview request.
+     * A CameraCaptureSession is the pipeline between the camera hardware and our output Surface.
+     * The repeating request tells the camera to keep producing frames continuously until stopped.
+     */
     private fun startPreview(
         camera: CameraDevice,
         surface: Surface,
@@ -132,9 +139,11 @@ class Camera2Session(
         }
     }
 
-    // Stops the camera and releases all resources in reverse order of acquisition.
-    // Closing the session before the device prevents the driver from receiving requests
-    // on a device that is already being torn down.
+    /*
+     * Stops the camera and releases all resources in reverse order of acquisition.
+     * Closing the session before the device prevents the driver from receiving requests
+     * on a device that is already being torn down.
+     */
     override fun close() {
         captureSession?.close() // stop the repeating request and release the pipeline
         captureSession = null
@@ -150,9 +159,11 @@ class Camera2Session(
         private const val DEFAULT_SENSOR_ORIENTATION = 90
         private const val SENSOR_ORIENTATION_HALF_ROTATION = 180
 
-        // Returns the best output size and sensor orientation for the back camera.
-        // "Best" means the size whose aspect ratio (after accounting for sensor rotation)
-        // is closest to the target surface dimensions — minimizing crop or letterbox.
+        /*
+         * Returns the best output size and sensor orientation for the back camera.
+         * "Best" means the size whose aspect ratio (after accounting for sensor rotation)
+         * is closest to the target surface dimensions — minimizing crop or letterbox.
+         */
         fun selectPreviewSize(
             context: Context,
             targetWidth: Int,

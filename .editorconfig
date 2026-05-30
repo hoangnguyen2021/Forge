@@ -6,3 +6,4 @@ ktlint_code_style=ktlint_official
 # Allow PascalCase Composables
 ktlint_standard_function-naming = disabled
 ktlint_standard_multiline-expression-wrapping = disabled
+ktlint_standard_no-empty-first-line-in-class-body = disabled
