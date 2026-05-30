@@ -33,20 +33,21 @@ import kotlin.math.abs
 class Camera2Session(
     private val context: Context,
 ) : CameraSession {
-    // Dedicated background thread with a Looper (message queue) so Camera2 can deliver
-    // callbacks without touching the main thread.
+    // Dedicated background thread with a Looper (message queue) for Camera2
     private val cameraThread = HandlerThread(CAMERA_THREAD_NAME).also { it.start() }
 
-    // API < 28: Handler tied to cameraThread's Looper — passed to Camera2 and used for
-    // setRepeatingRequest which still takes a Handler on all API levels.
+    // API < 28: Handler tied to cameraThread's Looper
     private val cameraHandler = Handler(cameraThread.looper)
 
     // API 28+: Executor wrapping cameraHandler — required by SessionConfiguration API.
     // Posts callbacks onto the same cameraThread as the Handler.
     private val cameraExecutor = Executor { command -> cameraHandler.post(command) }
 
-    private var cameraDevice: CameraDevice? = null // the opened camera hardware handle
-    private var captureSession: CameraCaptureSession? = null // the active streaming session
+    // The opened camera hardware handle
+    private var cameraDevice: CameraDevice? = null
+
+    // The active streaming session
+    private var captureSession: CameraCaptureSession? = null
 
     /*
      * Opens the back camera and starts streaming frames into the provided Surface.
@@ -67,6 +68,7 @@ class Camera2Session(
         manager.openCamera(
             cameraId,
             object : CameraDevice.StateCallback() {
+
                 // when the hardware is ready to use
                 override fun onOpened(camera: CameraDevice) {
                     cameraDevice = camera
@@ -100,6 +102,8 @@ class Camera2Session(
         surface: Surface,
     ) {
         val callback = object : CameraCaptureSession.StateCallback() {
+
+            // when the capture session is ready to accept requests
             override fun onConfigured(session: CameraCaptureSession) {
                 captureSession = session
 
@@ -116,6 +120,7 @@ class Camera2Session(
                 Timber.i("Camera preview started")
             }
 
+            // when the camera service rejects the session configuration (incompatible outputs, etc.)
             override fun onConfigureFailed(session: CameraCaptureSession) {
                 Timber.e("Capture session configuration failed")
             }

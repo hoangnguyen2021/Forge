@@ -71,7 +71,10 @@ internal class CameraSurfaceCallback(
         glHandler = handler
 
         glHandler?.post {
+            // allocate the native engine and remember it for teardown
             val eng = ForgeEngine.create().also { engine = it }
+
+            // create the EGL context on this thread, bound to the SurfaceHolder's Surface
             eng.surfaceCreated(holder.surface)
 
             // allocate OES texture on the GL thread — texId is only valid on this thread
