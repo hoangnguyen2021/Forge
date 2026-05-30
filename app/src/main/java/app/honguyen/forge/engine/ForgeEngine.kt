@@ -2,25 +2,67 @@ package app.honguyen.forge.engine
 
 import android.view.Surface
 
-object ForgeEngine {
-    init {
-        System.loadLibrary("forge_engine")
-    }
+/**
+ * Kotlin wrapper around the native C++ Engine. Each instance owns an opaque
+ * handle to a heap-allocated C++ Engine and must be paired with a destroy()
+ * call to free it. Methods are not thread-safe — call them on the same thread
+ * that created the EGL context (typically the GL thread).
+ */
+class ForgeEngine private constructor(
+    private val handle: Long,
+) {
+    fun surfaceCreated(surface: Surface) = nativeSurfaceCreated(handle, surface)
 
-    external fun nativeVersion(): String
+    fun createOesTexture(): Int = nativeCreateOesTexture(handle)
 
-    external fun nativeSurfaceCreated(surface: Surface)
-
-    external fun nativeCreateOesTexture(): Int
-
-    external fun nativeSetViewport(
+    fun setViewport(
         cameraPortraitW: Int,
         cameraPortraitH: Int,
         surfaceW: Int,
         surfaceH: Int,
-    )
+    ) = nativeSetViewport(handle, cameraPortraitW, cameraPortraitH, surfaceW, surfaceH)
 
-    external fun nativeDrawFrame(texMatrix: FloatArray)
+    fun drawFrame(texMatrix: FloatArray) = nativeDrawFrame(handle, texMatrix)
 
-    external fun nativeSurfaceDestroyed()
+    fun surfaceDestroyed() = nativeSurfaceDestroyed(handle)
+
+    fun destroy() = nativeDestroy(handle)
+
+    companion object {
+        init {
+            System.loadLibrary("forge_engine")
+        }
+
+        fun create(): ForgeEngine = ForgeEngine(nativeCreate())
+
+        fun version(): String = nativeVersion()
+
+        @JvmStatic private external fun nativeVersion(): String
+
+        @JvmStatic private external fun nativeCreate(): Long
+
+        @JvmStatic private external fun nativeDestroy(handle: Long)
+
+        @JvmStatic private external fun nativeSurfaceCreated(
+            handle: Long,
+            surface: Surface,
+        )
+
+        @JvmStatic private external fun nativeCreateOesTexture(handle: Long): Int
+
+        @JvmStatic private external fun nativeSetViewport(
+            handle: Long,
+            cameraPortraitW: Int,
+            cameraPortraitH: Int,
+            surfaceW: Int,
+            surfaceH: Int,
+        )
+
+        @JvmStatic private external fun nativeDrawFrame(
+            handle: Long,
+            texMatrix: FloatArray,
+        )
+
+        @JvmStatic private external fun nativeSurfaceDestroyed(handle: Long)
+    }
 }

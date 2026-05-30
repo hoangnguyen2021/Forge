@@ -39,8 +39,10 @@ internal class CameraSurfaceCallback(
     private var glHandler: Handler? = null
 
     // Only ever accessed on the GL thread
+    private var engine: ForgeEngine? = null
     private var cameraSession: Camera2Session? = null
     private var surfaceTexture: SurfaceTexture? = null
+    private val texMatrix = FloatArray(MATRIX_SIZE)
 
     /*
      * Written on the main thread in surfaceDestroyed, read on the GL thread in
@@ -69,11 +71,12 @@ internal class CameraSurfaceCallback(
         glHandler = handler
 
         glHandler?.post {
-            ForgeEngine.nativeSurfaceCreated(holder.surface)
+            val eng = ForgeEngine.create().also { engine = it }
+            eng.surfaceCreated(holder.surface)
 
             // allocate OES texture on the GL thread — texId is only valid on this thread
-            val texId = ForgeEngine.nativeCreateOesTexture()
-            if (texId < 0) return@post
+            val texId = eng.createOesTexture()
+            if (texId == 0) return@post
 
             // allocate SurfaceTexture backed by the OES texture
             val st = SurfaceTexture(texId).also { surfaceTexture = it }
@@ -86,12 +89,12 @@ internal class CameraSurfaceCallback(
                 // latches the latest frame into the OES texture; skipped frames are dropped
                 tex.updateTexImage()
 
-                // 4x4 matrix correcting for sensor orientation and HAL crop — passed to the shader
-                val texMatrix = FloatArray(16)
+                // 4x4 matrix correcting for sensor orientation and HAL crop — passed to the shader.
+                // texMatrix is a reusable field on this callback to avoid per-frame allocation.
                 tex.getTransformMatrix(texMatrix)
 
                 // draws the OES texture onto the EGL surface using the transform matrix
-                ForgeEngine.nativeDrawFrame(texMatrix)
+                engine?.drawFrame(texMatrix)
             }, handler)
         }
     }
@@ -135,7 +138,7 @@ internal class CameraSurfaceCallback(
             st.setDefaultBufferSize(size.width, size.height)
 
             // pass camera and surface dimensions to the renderer so it can compute the crop scale
-            ForgeEngine.nativeSetViewport(
+            engine?.setViewport(
                 cameraPortraitW = camPortraitW,
                 cameraPortraitH = camPortraitH,
                 surfaceW = width,
@@ -167,7 +170,9 @@ internal class CameraSurfaceCallback(
                 cameraSession = null
                 surfaceTexture?.release()
                 surfaceTexture = null
-                ForgeEngine.nativeSurfaceDestroyed()
+                engine?.surfaceDestroyed()
+                engine?.destroy()
+                engine = null
                 latch.countDown()
             }
             latch.await()
@@ -179,5 +184,6 @@ internal class CameraSurfaceCallback(
 
     companion object {
         private const val GL_THREAD_NAME = "GL_THREAD"
+        private const val MATRIX_SIZE = 16
     }
 }
