@@ -34,3 +34,6 @@ style:
     active: true
     ignoreAnnotated:
       - Preview
+  ReturnCount:
+    active: true
+    max: 4

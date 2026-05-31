@@ -1,9 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(./gradlew ktlintCheck *)",
-      "Bash(./gradlew ktlintFormat)",
-      "Bash(./gradlew detekt *)"
+      "Bash(./gradlew ktlintCheck detekt)"
     ]
   }
 }

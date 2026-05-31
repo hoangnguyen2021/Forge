@@ -164,6 +164,9 @@ class Camera2Session(
         private const val DEFAULT_SENSOR_ORIENTATION = 90
         private const val SENSOR_ORIENTATION_HALF_ROTATION = 180
 
+        private val DEFAULT_PREVIEW_FALLBACK =
+            PreviewSize(Size(DEFAULT_PREVIEW_WIDTH, DEFAULT_PREVIEW_HEIGHT), DEFAULT_SENSOR_ORIENTATION)
+
         /*
          * Returns the best output size and sensor orientation for the back camera.
          * "Best" means the size whose aspect ratio (after accounting for sensor rotation)
@@ -173,13 +176,13 @@ class Camera2Session(
             context: Context,
             targetWidth: Int,
             targetHeight: Int,
-        ): Pair<Size, Int> {
+        ): PreviewSize {
             val manager = context.getSystemService(CameraManager::class.java)
             val cameraId = manager.cameraIdList.firstOrNull { id ->
                 manager
                     .getCameraCharacteristics(id)
                     .get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK
-            } ?: return Pair(Size(DEFAULT_PREVIEW_WIDTH, DEFAULT_PREVIEW_HEIGHT), DEFAULT_SENSOR_ORIENTATION)
+            } ?: return DEFAULT_PREVIEW_FALLBACK
 
             val characteristics = manager.getCameraCharacteristics(cameraId)
 
@@ -187,7 +190,8 @@ class Camera2Session(
             // natural orientation. On most phones this is 90° — the sensor is mounted sideways.
             val sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION)
                 ?: DEFAULT_SENSOR_ORIENTATION
-            val map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)!!
+            val map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+                ?: return DEFAULT_PREVIEW_FALLBACK
 
             // Query sizes supported for SurfaceTexture output (the format used for preview).
             val sizes = map.getOutputSizes(android.graphics.SurfaceTexture::class.java)
@@ -206,7 +210,7 @@ class Camera2Session(
             } ?: sizes.first()
 
             Timber.i("Selected preview size: ${best.width}x${best.height} sensorOrientation=$sensorOrientation")
-            return Pair(best, sensorOrientation)
+            return PreviewSize(best, sensorOrientation)
         }
     }
 }
