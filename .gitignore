@@ -6,14 +6,7 @@ local.properties
 
 ## Android Studio / IntelliJ
 *.iml
-.idea/caches/
-.idea/libraries/
-.idea/modules.xml
-.idea/workspace.xml
-.idea/navEditor.xml
-.idea/assetWizardSettings.xml
-.idea/deploymentTargetDropDown.xml
-.idea/androidTestResultsUserPreferences.xml
+.idea/
 
 ## NDK / CMake / C++ build artifacts
 .externalNativeBuild/
