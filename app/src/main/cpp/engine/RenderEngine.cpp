@@ -68,6 +68,22 @@ GLuint RenderEngine::createOesTexture() {
         glDeleteTextures(1, &texId);
         return 0;
     }
+
+    // Present pass: samples the offscreen scene texture onto the screen.
+    present_ = std::make_unique<PresentPass>();
+    if (!present_->init(quad_.get())) {
+        LOGE("PresentPass init failed");
+        present_.reset();
+        renderer_.reset();
+        quad_.reset();
+        glDeleteTextures(1, &texId);
+        return 0;
+    }
+
+    // Offscreen target the camera renders into. Allocated here but sized later in
+    // setViewport, once the surface dimensions are known.
+    sceneFbo_ = std::make_unique<FrameBuffer>();
+
     CHECK_GL("RenderEngine::createOesTexture");
     return texId;
 }
@@ -76,26 +92,48 @@ GLuint RenderEngine::createOesTexture() {
 // cover-style crop. Null-guarded because setViewport may be called before
 // createOesTexture has succeeded, or after surfaceDestroyed has cleared state.
 void RenderEngine::setViewport(int camW, int camH, int surfW, int surfH) {
+    surfaceW_ = surfW;
+    surfaceH_ = surfH;
     if (renderer_) {
         renderer_->setViewport(camW, camH, surfW, surfH);
     }
+    // Size the offscreen target to match the screen so the scene is rendered at
+    // display resolution. ensureSize is a no-op unless the size changed.
+    if (sceneFbo_) {
+        sceneFbo_->ensureSize(surfW, surfH);
+    }
 }
 
-// Renders one camera frame to the EGL window surface. Invoked on the GL thread
+// Renders one camera frame through the render graph. Invoked on the GL thread
 // after SurfaceTexture's onFrameAvailable callback. texMatrix4x4 is the per-frame
 // transform from SurfaceTexture.getTransformMatrix() that compensates for sensor
 // orientation and HAL crop — it must be re-read every frame.
+//
+// Graph: camera OES --[camera pass]--> sceneFbo --[present pass]--> screen.
+// The intermediate FBO is the seam where future effect/ML passes will slot in.
 void RenderEngine::drawFrame(const float* texMatrix4x4) {
     // Defensive guard: a queued onFrameAvailable can fire after surfaceDestroyed
-    // has cleared egl_/renderer_; we ignore those late frames silently.
-    if (!egl_ || !renderer_) {
+    // has cleared state, or before setViewport has sized the offscreen target.
+    if (!egl_ || !renderer_ || !present_ || !sceneFbo_ || !sceneFbo_->ready()) {
         return;
     }
-    // Clear the back buffer so any pixel not covered by the camera quad reads
-    // black rather than last-frame garbage (mostly defensive — cover-mode crop
-    // fills the screen, but a transient mismatch frame on resize can leave gaps).
+
+    // Pass 1: camera -> offscreen scene texture. The camera pass applies crop and
+    // orientation while rendering into the FBO. bind() also sets the viewport to
+    // the FBO size.
+    sceneFbo_->bind();
+    // Clear so any pixel not covered by the camera quad reads black rather than
+    // last-frame garbage (defensive — cover-mode crop fills the target, but a
+    // transient mismatch frame on resize can leave gaps).
     glClear(GL_COLOR_BUFFER_BIT);
     renderer_->draw(texMatrix4x4);
+
+    // Pass 2: scene texture -> screen. Bind the default framebuffer (0) and
+    // restore the surface viewport, since the FBO bind changed it.
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glViewport(0, 0, surfaceW_, surfaceH_);
+    present_->draw(sceneFbo_->textureId());
+
     CHECK_GL("RenderEngine::drawFrame");
     // Promote the just-rendered back buffer to the front buffer so the user sees it.
     egl_->swapBuffers();
@@ -106,6 +144,8 @@ void RenderEngine::drawFrame(const float* texMatrix4x4) {
 // destructor frees GPU objects (program, VBO) that require a current context.
 // Tearing down EGL first would orphan those objects in the driver.
 void RenderEngine::surfaceDestroyed() {
+    present_.reset();
+    sceneFbo_.reset();
     renderer_.reset();
     quad_.reset();
     egl_.reset();

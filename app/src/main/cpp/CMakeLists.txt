@@ -13,9 +13,11 @@ add_library(forge_engine SHARED
     forge_jni.cpp
     egl/EglContext.cpp
     engine/RenderEngine.cpp
+    resource/FrameBuffer.cpp
     resource/FullScreenQuad.cpp
     shader/ShaderProgram.cpp
     shader/PassthroughRenderer.cpp
+    shader/PresentPass.cpp
 )
 
 target_compile_features(forge_engine PRIVATE cxx_std_17)

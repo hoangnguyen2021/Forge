@@ -1,8 +1,10 @@
 #pragma once
 
 #include "../egl/EglContext.h"
+#include "../resource/FrameBuffer.h"
 #include "../resource/FullScreenQuad.h"
 #include "../shader/PassthroughRenderer.h"
+#include "../shader/PresentPass.h"
 
 #include <GLES3/gl3.h>
 #include <android/native_window.h>
@@ -38,6 +40,14 @@ private:
     // and freed once, on the GL thread, in surfaceDestroyed.
     std::unique_ptr<FullScreenQuad> quad_;
     std::unique_ptr<PassthroughRenderer> renderer_;
+    // Offscreen target the camera pass renders into; the present pass then
+    // samples it to the screen. Sized to the surface in setViewport.
+    std::unique_ptr<FrameBuffer> sceneFbo_;
+    std::unique_ptr<PresentPass> present_;
+    // Surface (screen) dimensions, needed to reset the viewport for the present
+    // pass after an offscreen pass changed it.
+    int surfaceW_ = 0;
+    int surfaceH_ = 0;
 };
 
 }  // namespace forge
