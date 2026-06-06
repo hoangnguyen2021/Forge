@@ -2,6 +2,8 @@
 
 #include <GLES3/gl3.h>
 
+namespace forge {
+
 // A full-screen quad shared by every render pass (camera, blur, present).
 //
 // All passes draw the same two-triangle strip covering clip space; only their
@@ -18,7 +20,13 @@
 // VBO, so the owner must ensure the context is still current at destruction.
 class FullScreenQuad {
 public:
+    FullScreenQuad() = default;
     ~FullScreenQuad() { destroy(); }
+
+    // Owns a GL buffer — non-copyable. Instances live in unique_ptr, so the
+    // pointer moves and the object itself never needs to.
+    FullScreenQuad(const FullScreenQuad&)            = delete;
+    FullScreenQuad& operator=(const FullScreenQuad&) = delete;
 
     // Upload the quad geometry to a VBO. Returns false if the buffer could not
     // be created. Must run on the GL thread with a current context.
@@ -33,3 +41,5 @@ public:
 private:
     GLuint vbo_ = 0;
 };
+
+}  // namespace forge

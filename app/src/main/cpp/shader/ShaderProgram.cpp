@@ -1,8 +1,11 @@
 #include "ShaderProgram.h"
+
 #include <vector>
 
 #define LOG_TAG "ShaderProgram"
 #include "../Log.h"
+
+namespace forge {
 
 // Shaders are small programs written in GLSL that run on the GPU, not the CPU.
 // Every draw call needs two: a vertex shader (runs once per vertex — computes screen position)
@@ -10,9 +13,9 @@
 // GLSL source is just a string at C++ compile time; the GPU driver compiles it at runtime.
 GLuint compileShader(GLenum type, std::string_view src) {
     // Reserve a shader slot in the driver. 'type' is GL_VERTEX_SHADER or GL_FRAGMENT_SHADER.
-    GLuint shader = glCreateShader(type);
+    GLuint shader      = glCreateShader(type);
     const char *srcPtr = src.data();
-    auto srcLen = static_cast<GLint>(src.size());
+    auto srcLen        = static_cast<GLint>(src.size());
     // Hand the GLSL source string to the driver (the GPU doesn't read your memory directly).
     glShaderSource(shader, 1, &srcPtr, &srcLen);
     // Ask the driver to compile GLSL → GPU machine code, just like clang compiling a .cpp file.
@@ -65,3 +68,5 @@ GLuint linkProgram(GLuint vert, GLuint frag) {
     glDeleteShader(frag);
     return program;
 }
+
+}  // namespace forge

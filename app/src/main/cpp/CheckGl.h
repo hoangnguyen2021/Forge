@@ -12,7 +12,7 @@
 #ifndef NDEBUG
 #define CHECK_GL(label) ::forge::checkGlError(label, __FILE__, __LINE__)
 #else
-#define CHECK_GL(label) ((void) 0)
+#define CHECK_GL(label) ((void)0)
 #endif
 
 namespace forge {
@@ -21,8 +21,8 @@ inline void checkGlError(const char* label, const char* file, int line) {
     // isn't polluted by an earlier one.
     GLenum err;
     while ((err = glGetError()) != GL_NO_ERROR) {
-        __android_log_print(ANDROID_LOG_ERROR, "GL",
-                            "GL error 0x%x at %s (%s:%d)", err, label, file, line);
+        __android_log_print(ANDROID_LOG_ERROR, "GL", "GL error 0x%x at %s (%s:%d)", err, label,
+                            file, line);
     }
 }
 }  // namespace forge

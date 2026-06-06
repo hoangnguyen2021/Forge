@@ -2,11 +2,19 @@
 
 #include <GLES3/gl3.h>
 
+namespace forge {
+
 class FullScreenQuad;
 
 class PassthroughRenderer {
 public:
+    PassthroughRenderer() = default;
     ~PassthroughRenderer() { destroy(); }
+
+    // Owns a GL shader program — non-copyable. Instances live in unique_ptr, so
+    // the pointer moves and the object itself never needs to.
+    PassthroughRenderer(const PassthroughRenderer&)            = delete;
+    PassthroughRenderer& operator=(const PassthroughRenderer&) = delete;
 
     // quad is owned by the caller (RenderEngine) and shared across passes; it
     // must outlive this renderer and stay valid for every draw() call.
@@ -20,14 +28,16 @@ public:
 
 private:
     const FullScreenQuad* quad_ = nullptr;
-    GLuint program_ = 0;
-    GLuint oesTexId_ = 0;
-    GLint uTexMatrix_ = -1;
-    GLint uTexture_ = -1;
-    GLint uCropScale_ = -1;
-    GLint uCropOffset_ = -1;
-    float cropScaleX_ = 1.0f;
-    float cropScaleY_ = 1.0f;
-    float cropOffsetX_ = 0.0f;
-    float cropOffsetY_ = 0.0f;
+    GLuint program_             = 0;
+    GLuint oesTexId_            = 0;
+    GLint uTexMatrix_           = -1;
+    GLint uTexture_             = -1;
+    GLint uCropScale_           = -1;
+    GLint uCropOffset_          = -1;
+    float cropScaleX_           = 1.0f;
+    float cropScaleY_           = 1.0f;
+    float cropOffsetX_          = 0.0f;
+    float cropOffsetY_          = 0.0f;
 };
+
+}  // namespace forge

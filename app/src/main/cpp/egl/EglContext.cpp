@@ -3,33 +3,43 @@
 #define LOG_TAG "EglContext"
 #include "../Log.h"
 
-bool EglContext::init(ANativeWindow *window) {
+namespace forge {
+
+bool EglContext::init(ANativeWindow* window) {
     // EGL is the glue layer between Android's window system and OpenGL ES.
     // Think of it as the "setup" API you call before you can issue any draw commands.
-    // Step 1: get a handle to the GPU driver. EGL_DEFAULT_DISPLAY means "whatever GPU this device has."
+    // Step 1: get a handle to the GPU driver. EGL_DEFAULT_DISPLAY means "whatever GPU this device
+    // has."
     display_ = eglGetDisplay(EGL_DEFAULT_DISPLAY);
     if (display_ == EGL_NO_DISPLAY) {
         LOGE("eglGetDisplay failed");
         return false;
     }
-    // Step 2: actually initialize the driver connection (like opening a socket before sending data).
+    // Step 2: actually initialize the driver connection (like opening a socket before sending
+    // data).
     if (eglInitialize(display_, nullptr, nullptr) == EGL_FALSE) {
         LOGE("eglInitialize failed: 0x%x", eglGetError());
         return false;
     }
 
-    // Step 3: choose a pixel format ("config"). We describe what we need and EGL picks the best match.
-    // EGL_OPENGL_ES3_BIT — we want OpenGL ES 3 (not ES 2 or desktop GL).
-    // EGL_WINDOW_BIT     — the surface will be an actual on-screen window, not an off-screen buffer.
+    // Step 3: choose a pixel format ("config"). We describe what we need and EGL picks the best
+    // match. EGL_OPENGL_ES3_BIT — we want OpenGL ES 3 (not ES 2 or desktop GL). EGL_WINDOW_BIT —
+    // the surface will be an actual on-screen window, not an off-screen buffer.
     // RED/GREEN/BLUE/ALPHA 8 — standard 32-bit RGBA color; 8 bits per channel = 256 values each.
     const EGLint configAttribs[] = {
-            EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT,
-            EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
-            EGL_RED_SIZE, 8,
-            EGL_GREEN_SIZE, 8,
-            EGL_BLUE_SIZE, 8,
-            EGL_ALPHA_SIZE, 8,
-            EGL_NONE  // sentinel: tells EGL the attribute list is done
+        EGL_RENDERABLE_TYPE,
+        EGL_OPENGL_ES3_BIT,
+        EGL_SURFACE_TYPE,
+        EGL_WINDOW_BIT,
+        EGL_RED_SIZE,
+        8,
+        EGL_GREEN_SIZE,
+        8,
+        EGL_BLUE_SIZE,
+        8,
+        EGL_ALPHA_SIZE,
+        8,
+        EGL_NONE  // sentinel: tells EGL the attribute list is done
     };
     EGLConfig config;
     EGLint numConfigs = 0;
@@ -42,10 +52,8 @@ bool EglContext::init(ANativeWindow *window) {
     // Step 4: create a context — the GL "session" that owns all GPU state (shaders, textures,
     // bound buffers, blend modes, etc.). Every GL call implicitly reads/writes this state.
     // EGL_NO_CONTEXT means we're not sharing resources with another context.
-    const EGLint contextAttribs[] = {
-            EGL_CONTEXT_CLIENT_VERSION, 3,  // request OpenGL ES 3
-            EGL_NONE
-    };
+    const EGLint contextAttribs[] = {EGL_CONTEXT_CLIENT_VERSION, 3,  // request OpenGL ES 3
+                                     EGL_NONE};
     context_ = eglCreateContext(display_, config, EGL_NO_CONTEXT, contextAttribs);
     if (context_ == EGL_NO_CONTEXT) {
         LOGE("eglCreateContext failed: 0x%x", eglGetError());
@@ -99,3 +107,5 @@ void EglContext::destroy() {
     context_ = EGL_NO_CONTEXT;
     surface_ = EGL_NO_SURFACE;
 }
+
+}  // namespace forge

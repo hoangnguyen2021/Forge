@@ -5,11 +5,19 @@
 #include <GLES3/gl3.h>
 #include <android/native_window.h>
 
+namespace forge {
+
 class EglContext {
 public:
+    EglContext() = default;
     ~EglContext() { destroy(); }
 
-    bool init(ANativeWindow *window);
+    // Owns EGL display/context/surface handles — non-copyable. Instances live in
+    // unique_ptr, so the pointer moves and the object itself never needs to.
+    EglContext(const EglContext&)            = delete;
+    EglContext& operator=(const EglContext&) = delete;
+
+    bool init(ANativeWindow* window);
 
     void swapBuffers();
 
@@ -20,3 +28,5 @@ private:
     EGLContext context_ = EGL_NO_CONTEXT;
     EGLSurface surface_ = EGL_NO_SURFACE;
 };
+
+}  // namespace forge

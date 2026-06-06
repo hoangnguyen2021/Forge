@@ -18,6 +18,9 @@ add_library(forge_engine SHARED
     shader/PassthroughRenderer.cpp
 )
 
+target_compile_features(forge_engine PRIVATE cxx_std_17)
+target_compile_options(forge_engine PRIVATE -Wall -Wextra)
+
 target_link_libraries(forge_engine
     ${android-lib}
     ${log-lib}

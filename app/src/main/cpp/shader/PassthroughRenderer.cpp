@@ -1,12 +1,16 @@
 #include "PassthroughRenderer.h"
-#include "ShaderProgram.h"
+
 #include "../CheckGl.h"
 #include "../resource/FullScreenQuad.h"
+#include "ShaderProgram.h"
+
 #include <GLES2/gl2ext.h>
 #include <algorithm>
 
 #define LOG_TAG "PassthroughRenderer"
 #include "../Log.h"
+
+namespace forge {
 
 // Vertex shader: runs once per corner of the quad.
 // Its only job is to pass the screen position straight through and
@@ -86,7 +90,8 @@ static constexpr std::string_view kFragSrc = R"GLSL(
 
 bool PassthroughRenderer::init(GLuint oesTextureId, const FullScreenQuad* quad) {
     // Save the OES texture ID created by SurfaceTexture on the Java side.
-    // We don't own this texture — SurfaceTexture manages its lifetime — we just sample from it each frame.
+    // We don't own this texture — SurfaceTexture manages its lifetime — we just sample from it each
+    // frame.
     oesTexId_ = oesTextureId;
 
     // Cache the shared quad. It is owned by RenderEngine and reused by every pass;
@@ -106,7 +111,8 @@ bool PassthroughRenderer::init(GLuint oesTextureId, const FullScreenQuad* quad) 
     // Linking resolves the interface between vertex outputs (vTexCoord) and fragment inputs,
     // validates that types match, and produces a single executable the GPU can run.
     // The analogy: compile .cpp → .o files, then link the .o files into a binary.
-    // After linking, vert and frag are intermediate artifacts (like .o files) and are deleted inside linkProgram.
+    // After linking, vert and frag are intermediate artifacts (like .o files) and are deleted
+    // inside linkProgram.
     program_ = linkProgram(vert, frag);
     if (program_ == 0) {
         return false;
@@ -114,11 +120,12 @@ bool PassthroughRenderer::init(GLuint oesTextureId, const FullScreenQuad* quad) 
 
     // Step 3: look up the integer slot for each uniform variable in the linked program.
     // Uniforms are declared by name in GLSL, but the GPU assigns each an integer slot at link time.
-    // glGetUniformLocation queries that slot — caching it here avoids a name lookup every frame in draw().
-    uTexMatrix_ = glGetUniformLocation(program_, "uTexMatrix");
-    uTexture_   = glGetUniformLocation(program_, "uTexture");
-    uCropScale_ = glGetUniformLocation(program_, "uCropScale");
-    uCropOffset_= glGetUniformLocation(program_, "uCropOffset");
+    // glGetUniformLocation queries that slot — caching it here avoids a name lookup every frame in
+    // draw().
+    uTexMatrix_  = glGetUniformLocation(program_, "uTexMatrix");
+    uTexture_    = glGetUniformLocation(program_, "uTexture");
+    uCropScale_  = glGetUniformLocation(program_, "uCropScale");
+    uCropOffset_ = glGetUniformLocation(program_, "uCropOffset");
 
     CHECK_GL("PassthroughRenderer::init");
     LOGI("initialized");
@@ -133,7 +140,8 @@ bool PassthroughRenderer::init(GLuint oesTextureId, const FullScreenQuad* quad) 
 //   → only the center 56.25% of the camera height is shown, equal amounts cropped top and bottom.
 // The resulting cropScale/cropOffset are uploaded as uniforms to the vertex shader each draw call.
 void PassthroughRenderer::setViewport(int camW, int camH, int surfW, int surfH) {
-    // How much would we need to scale the camera image to fill the surface in each axis independently?
+    // How much would we need to scale the camera image to fill the surface in each axis
+    // independently?
     float scaleW = static_cast<float>(surfW) / static_cast<float>(camW);
     float scaleH = static_cast<float>(surfH) / static_cast<float>(camH);
 
@@ -142,25 +150,27 @@ void PassthroughRenderer::setViewport(int camW, int camH, int surfW, int surfH) 
     float renderScale = std::max(scaleW, scaleH);
 
     // cropScale is the fraction of the camera's UV range (0..1) we actually sample per axis.
-    // Dividing by renderScale normalizes so the filling axis gets 1.0 and the cropped axis gets < 1.0.
-    // In the vertex shader: uv = aTexCoord * uCropScale shrinks the 0..1 UV range to this fraction.
+    // Dividing by renderScale normalizes so the filling axis gets 1.0 and the cropped axis gets
+    // < 1.0. In the vertex shader: uv = aTexCoord * uCropScale shrinks the 0..1 UV range to this
+    // fraction.
     cropScaleX_ = scaleW / renderScale;
     cropScaleY_ = scaleH / renderScale;
 
-    // Without an offset, the shrunken UV window would start at 0 and sample only one edge of the image.
-    // Adding half the unused portion as an offset re-centers the window so equal amounts are cropped
-    // on both sides. e.g. cropScaleY=0.5625 → offset=(1-0.5625)*0.5=0.219 → samples v=0.219..0.781.
+    // Without an offset, the shrunken UV window would start at 0 and sample only one edge of the
+    // image. Adding half the unused portion as an offset re-centers the window so equal amounts are
+    // cropped on both sides. e.g. cropScaleY=0.5625 → offset=(1-0.5625)*0.5=0.219 → samples
+    // v=0.219..0.781.
     cropOffsetX_ = (1.0f - cropScaleX_) * 0.5f;
     cropOffsetY_ = (1.0f - cropScaleY_) * 0.5f;
 
-    LOGI("viewport set: cam=%dx%d surf=%dx%d cropScale=(%.3f,%.3f)",
-         camW, camH, surfW, surfH, cropScaleX_, cropScaleY_);
+    LOGI("viewport set: cam=%dx%d surf=%dx%d cropScale=(%.3f,%.3f)", camW, camH, surfW, surfH,
+         cropScaleX_, cropScaleY_);
 }
 
 // Issues one full-screen draw call that samples the camera texture onto the quad.
 // texMatrix4x4 comes from SurfaceTexture.getTransformMatrix() — it encodes any rotation
 // or flip the camera hardware applied to the buffer, and must be re-fetched each frame.
-void PassthroughRenderer::draw(const float *texMatrix4x4) const {
+void PassthroughRenderer::draw(const float* texMatrix4x4) const {
     // Make our shader program active. OpenGL is a global state machine — this single call means
     // every subsequent GL operation and draw call uses our vertex + fragment shaders.
     glUseProgram(program_);
@@ -207,3 +217,5 @@ void PassthroughRenderer::destroy() {
         program_ = 0;
     }
 }
+
+}  // namespace forge

@@ -5,6 +5,8 @@
 #include <array>
 #include <cstddef>
 
+namespace forge {
+
 // Each vertex carries a screen position and a texture coordinate. This layout
 // must exactly match what draw() describes to the GPU via glVertexAttribPointer.
 struct QuadVertex {
@@ -22,12 +24,12 @@ struct QuadVertex {
 // pass) and FBO color textures (which are bottom-left origin) upright, so no
 // vertical flip is needed between passes.
 static constexpr std::array<QuadVertex, 4> kQuad = {
-        {
-                {-1.0f, -1.0f, 0.0f, 0.0f},  // bottom-left
-                {1.0f, -1.0f, 1.0f, 0.0f},   // bottom-right
-                {-1.0f, 1.0f, 0.0f, 1.0f},   // top-left
-                {1.0f, 1.0f, 1.0f, 1.0f},    // top-right
-        },
+    {
+        {-1.0f, -1.0f, 0.0f, 0.0f},  // bottom-left
+        {1.0f, -1.0f, 1.0f, 0.0f},   // bottom-right
+        {-1.0f, 1.0f, 0.0f, 1.0f},   // top-left
+        {1.0f, 1.0f, 1.0f, 1.0f},    // top-right
+    },
 };
 
 bool FullScreenQuad::init() {
@@ -95,3 +97,5 @@ void FullScreenQuad::destroy() {
         vbo_ = 0;
     }
 }
+
+}  // namespace forge

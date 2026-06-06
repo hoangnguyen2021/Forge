@@ -1,12 +1,14 @@
 #pragma once
 
+#include "../egl/EglContext.h"
+#include "../resource/FullScreenQuad.h"
+#include "../shader/PassthroughRenderer.h"
+
 #include <GLES3/gl3.h>
 #include <android/native_window.h>
 #include <memory>
 
-#include "../egl/EglContext.h"
-#include "../resource/FullScreenQuad.h"
-#include "../shader/PassthroughRenderer.h"
+namespace forge {
 
 // Owns the per-surface GL state (EGL context + renderer) and exposes the
 // operations the JNI layer needs. One RenderEngine per camera preview surface;
@@ -37,3 +39,5 @@ private:
     std::unique_ptr<FullScreenQuad> quad_;
     std::unique_ptr<PassthroughRenderer> renderer_;
 };
+
+}  // namespace forge

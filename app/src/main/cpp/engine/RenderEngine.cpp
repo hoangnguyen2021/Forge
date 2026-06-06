@@ -1,11 +1,13 @@
 #include "RenderEngine.h"
 
-#include <GLES2/gl2ext.h>
-
 #include "../CheckGl.h"
+
+#include <GLES2/gl2ext.h>
 
 #define LOG_TAG "RenderEngine"
 #include "../Log.h"
+
+namespace forge {
 
 // Creates the EGL context bound to the given Android window. Must run on the
 // thread that will later issue draw calls — EGL contexts are thread-local and
@@ -108,3 +110,5 @@ void RenderEngine::surfaceDestroyed() {
     quad_.reset();
     egl_.reset();
 }
+
+}  // namespace forge
