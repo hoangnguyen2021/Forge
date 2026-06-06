@@ -13,7 +13,7 @@ add_library(forge_engine SHARED
     forge_jni.cpp
     egl/EglContext.cpp
     engine/RenderEngine.cpp
-    gl/FullScreenQuad.cpp
+    resource/FullScreenQuad.cpp
     shader/ShaderProgram.cpp
     shader/PassthroughRenderer.cpp
 )

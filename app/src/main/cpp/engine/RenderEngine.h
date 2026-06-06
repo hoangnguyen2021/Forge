@@ -5,7 +5,7 @@
 #include <memory>
 
 #include "../egl/EglContext.h"
-#include "../gl/FullScreenQuad.h"
+#include "../resource/FullScreenQuad.h"
 #include "../shader/PassthroughRenderer.h"
 
 // Owns the per-surface GL state (EGL context + renderer) and exposes the

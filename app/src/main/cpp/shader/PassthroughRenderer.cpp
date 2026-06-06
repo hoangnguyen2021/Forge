@@ -1,7 +1,7 @@
 #include "PassthroughRenderer.h"
 #include "ShaderProgram.h"
 #include "../CheckGl.h"
-#include "../gl/FullScreenQuad.h"
+#include "../resource/FullScreenQuad.h"
 #include <GLES2/gl2ext.h>
 #include <algorithm>
 
