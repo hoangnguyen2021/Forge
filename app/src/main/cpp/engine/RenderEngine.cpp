@@ -46,11 +46,21 @@ GLuint RenderEngine::createOesTexture() {
     // Unbind so subsequent unrelated GL calls don't accidentally mutate this texture.
     glBindTexture(GL_TEXTURE_EXTERNAL_OES, 0);
 
+    // Upload the shared full-screen quad once; every pass reuses this VBO.
+    quad_ = std::make_unique<FullScreenQuad>();
+    if (!quad_->init()) {
+        LOGE("FullScreenQuad init failed");
+        quad_.reset();
+        glDeleteTextures(1, &texId);
+        return 0;
+    }
+
     // The renderer caches texId internally and samples it on every draw call.
     renderer_ = std::make_unique<PassthroughRenderer>();
-    if (!renderer_->init(texId)) {
+    if (!renderer_->init(texId, quad_.get())) {
         LOGE("PassthroughRenderer init failed");
         renderer_.reset();
+        quad_.reset();
         // Don't orphan the GL texture if the renderer that was supposed to
         // own it can't be constructed.
         glDeleteTextures(1, &texId);
@@ -95,5 +105,6 @@ void RenderEngine::drawFrame(const float* texMatrix4x4) {
 // Tearing down EGL first would orphan those objects in the driver.
 void RenderEngine::surfaceDestroyed() {
     renderer_.reset();
+    quad_.reset();
     egl_.reset();
 }

@@ -2,11 +2,15 @@
 
 #include <GLES3/gl3.h>
 
+class FullScreenQuad;
+
 class PassthroughRenderer {
 public:
     ~PassthroughRenderer() { destroy(); }
 
-    bool init(GLuint oesTextureId);
+    // quad is owned by the caller (RenderEngine) and shared across passes; it
+    // must outlive this renderer and stay valid for every draw() call.
+    bool init(GLuint oesTextureId, const FullScreenQuad* quad);
 
     void setViewport(int cameraPortraitW, int cameraPortraitH, int surfaceW, int surfaceH);
 
@@ -15,8 +19,8 @@ public:
     void destroy();
 
 private:
+    const FullScreenQuad* quad_ = nullptr;
     GLuint program_ = 0;
-    GLuint vbo_ = 0;
     GLuint oesTexId_ = 0;
     GLint uTexMatrix_ = -1;
     GLint uTexture_ = -1;

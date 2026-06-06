@@ -1,10 +1,9 @@
 #include "PassthroughRenderer.h"
 #include "ShaderProgram.h"
 #include "../CheckGl.h"
+#include "../gl/FullScreenQuad.h"
 #include <GLES2/gl2ext.h>
 #include <algorithm>
-#include <array>
-#include <cstddef>
 
 #define LOG_TAG "PassthroughRenderer"
 #include "../Log.h"
@@ -85,29 +84,14 @@ static constexpr std::string_view kFragSrc = R"GLSL(
     }
 )GLSL";
 
-// Each vertex of the quad carries two pieces of data: a screen position and a texture coordinate.
-// The layout here must exactly match what we describe to the GPU via glVertexAttribPointer.
-struct QuadVertex {
-    float x, y;  // NDC position: (-1,-1) is bottom-left, (1,1) is top-right of the screen
-    float u, v;  // texture coordinate: (0,0) is top-left of the camera image, (1,1) is bottom-right
-};
-
-// A full-screen quad made of two triangles drawn as a strip: BL → BR → TL → TR.
-// Triangle strip reuses the last two vertices for each new triangle, so 4 vertices → 2 triangles.
-// NDC positions fill the entire clip space so the camera image covers every pixel on screen.
-static constexpr std::array<QuadVertex, 4> kQuad = {
-        {
-                {-1.0f, -1.0f, 0.0f, 0.0f},  // bottom-left
-                {1.0f, -1.0f, 1.0f, 0.0f},   // bottom-right
-                {-1.0f, 1.0f, 0.0f, 1.0f},   // top-left
-                {1.0f, 1.0f, 1.0f, 1.0f},    // top-right
-        },
-};
-
-bool PassthroughRenderer::init(GLuint oesTextureId) {
+bool PassthroughRenderer::init(GLuint oesTextureId, const FullScreenQuad* quad) {
     // Save the OES texture ID created by SurfaceTexture on the Java side.
     // We don't own this texture — SurfaceTexture manages its lifetime — we just sample from it each frame.
     oesTexId_ = oesTextureId;
+
+    // Cache the shared quad. It is owned by RenderEngine and reused by every pass;
+    // we only sample it in draw() and never free it here.
+    quad_ = quad;
 
     // Step 1: compile each GLSL source string into a GPU shader object.
     // compileShader sends the source to the GPU driver, which compiles it to GPU machine code —
@@ -135,21 +119,6 @@ bool PassthroughRenderer::init(GLuint oesTextureId) {
     uTexture_   = glGetUniformLocation(program_, "uTexture");
     uCropScale_ = glGetUniformLocation(program_, "uCropScale");
     uCropOffset_= glGetUniformLocation(program_, "uCropOffset");
-
-    // Step 4: upload the quad vertex data to a VBO (Vertex Buffer Object) on the GPU.
-    // A VBO is a buffer allocated in GPU memory — uploading once here means draw() can reuse it
-    // every frame without copying kQuad from CPU memory each time.
-    glGenBuffers(1, &vbo_);       // allocate a GPU buffer, store its ID in vbo_
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_);  // make vbo_ the active buffer so the next calls target it
-    // GL_STATIC_DRAW hints that data is written once and read many times,
-    // so the driver can place it in the fastest GPU memory tier.
-    glBufferData(GL_ARRAY_BUFFER, sizeof(kQuad), kQuad.data(), GL_STATIC_DRAW);
-    // Compile-time check: QuadVertex must be exactly 4 floats with no padding,
-    // otherwise glVertexAttribPointer would compute wrong byte offsets and corrupt the geometry silently.
-    static_assert(sizeof(QuadVertex) == 4 * sizeof(float), "QuadVertex layout mismatch");
-    // Unbind after upload — OpenGL is a global state machine, leaving a buffer bound
-    // risks later GL calls accidentally modifying it.
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     CHECK_GL("PassthroughRenderer::init");
     LOGI("initialized");
@@ -216,51 +185,19 @@ void PassthroughRenderer::draw(const float *texMatrix4x4) const {
     glUniform2f(uCropScale_, cropScaleX_, cropScaleY_);
     glUniform2f(uCropOffset_, cropOffsetX_, cropOffsetY_);
 
-    // --- Vertex layout description ---
-    // Tell the GPU how to unpack bytes from the VBO into vertex shader attributes.
-    // glVertexAttribPointer args: (slot, num_floats, type, normalized, stride, byte_offset)
-    //   slot       — must match layout(location = N) in the vertex shader
-    //   num_floats — how many floats to read per vertex for this attribute
-    //   stride     — how many bytes between the start of one vertex and the next (= sizeof(QuadVertex))
-    //   byte_offset — where in each vertex this attribute starts
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-    glEnableVertexAttribArray(0);  // activate slot 0 (off by default)
-    // Slot 0 = aPosition: starts at byte 0 (field x), reads 2 floats (x, y)
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(QuadVertex),
-                          reinterpret_cast<const void *>(offsetof(QuadVertex, x)));
-    glEnableVertexAttribArray(1);  // activate slot 1 (off by default)
-    // Slot 1 = aTexCoord: starts at byte 8 (field u, after x and y), reads 2 floats (u, v)
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(QuadVertex),
-                          reinterpret_cast<const void *>(offsetof(QuadVertex, u)));
-
-    // --- Draw call ---
-    // GPU reads 4 vertices from the VBO, runs the vertex shader 4 times (once per corner),
-    // rasterizes 2 triangles covering the full screen, then runs the fragment shader once
-    // per covered pixel — potentially millions of times in parallel.
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-    // --- Cleanup ---
-    // OpenGL state persists globally between draw calls. Disabling the attribute slots and
-    // unbinding the buffer ensures other renderers don't accidentally read from our VBO.
-    glDisableVertexAttribArray(0);
-    glDisableVertexAttribArray(1);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    // --- Geometry + draw call ---
+    // The shared full-screen quad binds its VBO, describes the vertex attributes,
+    // and issues the GL_TRIANGLE_STRIP draw that covers every pixel of the target.
+    quad_->draw();
 
     CHECK_GL("PassthroughRenderer::draw");
 }
 
 // Releases GPU resources allocated by this renderer in init().
-// Only frees what we own — the OES texture is intentionally not deleted here because
-// it was created externally by SurfaceTexture on the Java side and is not ours to free.
+// Only frees what we own — the OES texture is not deleted here (SurfaceTexture
+// owns it on the Java side) and the quad is not deleted here (RenderEngine owns
+// it and shares it across passes). Only the shader program is ours.
 void PassthroughRenderer::destroy() {
-    // Free the VBO that holds the quad vertex data on the GPU.
-    // The 0-check guards against double-free if destroy() is called more than once.
-    // Resetting to 0 after deletion marks the handle as invalid — 0 is GL's null/sentinel value.
-    if (vbo_ != 0) {
-        glDeleteBuffers(1, &vbo_);
-        vbo_ = 0;
-    }
-
     // Free the linked shader program — this releases the compiled vertex + fragment shaders
     // that the GPU driver allocated when we called linkProgram() in init().
     // The individual shader objects (vert, frag) were already deleted inside linkProgram()

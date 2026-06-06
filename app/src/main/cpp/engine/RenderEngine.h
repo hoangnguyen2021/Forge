@@ -5,6 +5,7 @@
 #include <memory>
 
 #include "../egl/EglContext.h"
+#include "../gl/FullScreenQuad.h"
 #include "../shader/PassthroughRenderer.h"
 
 // Owns the per-surface GL state (EGL context + renderer) and exposes the
@@ -30,5 +31,9 @@ public:
 
 private:
     std::unique_ptr<EglContext> egl_;
+    // Shared full-screen geometry, created in createOesTexture and handed to every
+    // pass. Held here (not inside a pass) so a single VBO is reused across passes
+    // and freed once, on the GL thread, in surfaceDestroyed.
+    std::unique_ptr<FullScreenQuad> quad_;
     std::unique_ptr<PassthroughRenderer> renderer_;
 };
