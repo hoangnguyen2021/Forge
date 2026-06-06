@@ -1,9 +1,8 @@
 #include "ShaderProgram.h"
-#include <android/log.h>
 #include <vector>
 
-#define TAG "ShaderProgram"
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
+#define LOG_TAG "ShaderProgram"
+#include "../Log.h"
 
 // Shaders are small programs written in GLSL that run on the GPU, not the CPU.
 // Every draw call needs two: a vertex shader (runs once per vertex — computes screen position)

@@ -1,10 +1,9 @@
 #include <jni.h>
-#include <android/log.h>
 #include <android/native_window_jni.h>
 #include "engine/RenderEngine.h"
 
-#define TAG "Forge"
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  TAG, __VA_ARGS__)
+#define LOG_TAG "Forge"
+#include "Log.h"
 
 // Round-trip a jlong through the RenderEngine pointer. The Kotlin side treats
 // the handle as opaque; only this file dereferences it.

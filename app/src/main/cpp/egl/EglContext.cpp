@@ -1,9 +1,7 @@
 #include "EglContext.h"
-#include <android/log.h>
 
-#define TAG "EglContext"
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  TAG, __VA_ARGS__)
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
+#define LOG_TAG "EglContext"
+#include "../Log.h"
 
 bool EglContext::init(ANativeWindow *window) {
     // EGL is the glue layer between Android's window system and OpenGL ES.

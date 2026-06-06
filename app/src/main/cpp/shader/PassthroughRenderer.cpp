@@ -2,14 +2,12 @@
 #include "ShaderProgram.h"
 #include "../CheckGl.h"
 #include <GLES2/gl2ext.h>
-#include <android/log.h>
 #include <algorithm>
 #include <array>
 #include <cstddef>
 
-#define TAG "PassthroughRenderer"
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  TAG, __VA_ARGS__)
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
+#define LOG_TAG "PassthroughRenderer"
+#include "../Log.h"
 
 // Vertex shader: runs once per corner of the quad.
 // Its only job is to pass the screen position straight through and

@@ -1,12 +1,11 @@
 #include "RenderEngine.h"
 
 #include <GLES2/gl2ext.h>
-#include <android/log.h>
 
 #include "../CheckGl.h"
 
-#define TAG "RenderEngine"
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
+#define LOG_TAG "RenderEngine"
+#include "../Log.h"
 
 // Creates the EGL context bound to the given Android window. Must run on the
 // thread that will later issue draw calls — EGL contexts are thread-local and
