@@ -12,8 +12,6 @@ public:
     EglContext() = default;
     ~EglContext() { destroy(); }
 
-    // Owns EGL display/context/surface handles — non-copyable. Instances live in
-    // unique_ptr, so the pointer moves and the object itself never needs to.
     EglContext(const EglContext&)            = delete;
     EglContext& operator=(const EglContext&) = delete;
 

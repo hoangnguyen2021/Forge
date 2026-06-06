@@ -11,8 +11,6 @@ public:
     PassthroughRenderer() = default;
     ~PassthroughRenderer() { destroy(); }
 
-    // Owns a GL shader program — non-copyable. Instances live in unique_ptr, so
-    // the pointer moves and the object itself never needs to.
     PassthroughRenderer(const PassthroughRenderer&)            = delete;
     PassthroughRenderer& operator=(const PassthroughRenderer&) = delete;
 

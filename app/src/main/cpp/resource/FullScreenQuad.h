@@ -23,8 +23,6 @@ public:
     FullScreenQuad() = default;
     ~FullScreenQuad() { destroy(); }
 
-    // Owns a GL buffer — non-copyable. Instances live in unique_ptr, so the
-    // pointer moves and the object itself never needs to.
     FullScreenQuad(const FullScreenQuad&)            = delete;
     FullScreenQuad& operator=(const FullScreenQuad&) = delete;
 
