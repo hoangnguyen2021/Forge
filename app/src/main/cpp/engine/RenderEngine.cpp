@@ -25,7 +25,7 @@ bool RenderEngine::surfaceCreated(ANativeWindow* window) {
 }
 
 // Allocates the GL texture the camera will write frames into, plus the renderer
-// that samples from it. Returns the texture id so Kotlin can wrap it in a
+// that samples from it. Returns the texture id so caller can wrap it in a
 // SurfaceTexture, or 0 (GL's reserved invalid-texture sentinel) on failure.
 GLuint RenderEngine::createOesTexture() {
     GLuint texId = 0;
@@ -37,12 +37,17 @@ GLuint RenderEngine::createOesTexture() {
     // and video buffers directly. The driver handles YUV→RGB conversion when
     // sampled — regular sampler2D textures can't do this.
     glBindTexture(GL_TEXTURE_EXTERNAL_OES, texId);
-    // Linear filtering for smooth scaling. OES textures don't support mipmaps,
-    // so MIN_FILTER must be GL_LINEAR (not any GL_LINEAR_MIPMAP_* variant).
+    // MIN_FILTER: GL_LINEAR blends the 4 nearest texels when the texture is shrunk.
+    // MAG_FILTER: GL_LINEAR blends when the texture is stretched, avoiding blockiness.
+    // GL_LINEAR: the correct ceiling hereOES textures don't support mipmaps, so any
+    // GL_LINEAR_MIPMAP_* variant would silently produce a black texture.
     glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    // CLAMP_TO_EDGE prevents wrap-around artifacts at frame borders; the
-    // camera frame's UVs map exactly to 0..1, so no repeat is desired.
+    // WRAP_S/T (S = horizontal axis, T = vertical axis) control what the GPU samples when a UV
+    // coordinate falls outside [0,1].
+    // CLAMP_TO_EDGE: pins out-of-range UVs to the nearest edge pixel — any floating-point rounding
+    // past 1.0 gets the border pixel rather than wrapping to the opposite edge, which would bleed
+    // the wrong side of the frame.
     glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     // Unbind so subsequent unrelated GL calls don't accidentally mutate this texture.
@@ -57,7 +62,8 @@ GLuint RenderEngine::createOesTexture() {
         return 0;
     }
 
-    // The renderer caches texId internally and samples it on every draw call.
+    // Pass 1 shader: Samples the OES camera texture, applies texMatrix4x4 (sensor orientation +
+    // HAL crop) and cover-crop, writes into the bound FBO.
     renderer_ = std::make_unique<PassthroughRenderer>();
     if (!renderer_->init(texId, quad_.get())) {
         LOGE("PassthroughRenderer init failed");
@@ -69,7 +75,7 @@ GLuint RenderEngine::createOesTexture() {
         return 0;
     }
 
-    // Present pass: samples the offscreen scene texture onto the screen.
+    // Pass 2 shader: Blits sceneFbo_'s texture to the window surface with straight UVs.
     present_ = std::make_unique<PresentPass>();
     if (!present_->init(quad_.get())) {
         LOGE("PresentPass init failed");
@@ -80,8 +86,9 @@ GLuint RenderEngine::createOesTexture() {
         return 0;
     }
 
-    // Offscreen target the camera renders into. Allocated here but sized later in
-    // setViewport, once the surface dimensions are known.
+    // Offscreen target the camera renders into. It is the handoff between the two passes.
+    // renderer_ renders into it; present_ samples from it. The insertion point for any future
+    // effect pass.
     sceneFbo_ = std::make_unique<FrameBuffer>();
 
     CHECK_GL("RenderEngine::createOesTexture");
@@ -94,6 +101,8 @@ GLuint RenderEngine::createOesTexture() {
 void RenderEngine::setViewport(int camW, int camH, int surfW, int surfH) {
     surfaceW_ = surfW;
     surfaceH_ = surfH;
+    // Forward dimensions so the camera pass can recompute the cover-crop matrix —
+    // the ratio of camera vs surface may change on rotation or surface resize.
     if (renderer_) {
         renderer_->setViewport(camW, camH, surfW, surfH);
     }
