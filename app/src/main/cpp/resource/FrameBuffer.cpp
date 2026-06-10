@@ -8,7 +8,7 @@
 namespace forge {
 
 bool FrameBuffer::ensureSize(int w, int h) {
-    // Nothing to do if we already have a framebuffer at this exact size.
+    // No-op if framebuffer already has the exact size.
     if (fbo_ != 0 && w == width_ && h == height_) {
         return true;
     }
@@ -19,25 +19,34 @@ bool FrameBuffer::ensureSize(int w, int h) {
 
     // Color texture the pass renders into and later passes sample from.
     glGenTextures(1, &texture_);
+    // GL_TEXTURE_2D: standard texture we fully control
     glBindTexture(GL_TEXTURE_2D, texture_);
-    // RGBA8 storage with no initial pixel data (nullptr) — the GPU allocates the
-    // memory and a pass fills it by rendering. The internal format GL_RGBA8 is
-    // what matters; GL_RGBA/GL_UNSIGNED_BYTE just describe the (absent) upload.
+    // GL_RGBA8: the internal format — how the GPU stores each texel (8 bits per channel).
+    // GL_RGBA / GL_UNSIGNED_BYTE: describe the upload pixel layout..
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-    // Linear filtering so sampling this texture in a later pass scales smoothly.
+    // MIN_FILTER: GL_LINEAR blends the 4 nearest texels when the texture is shrunk.
+    // MAG_FILTER: GL_LINEAR blends when the texture is stretched, avoiding blockiness.
+    // GL_LINEAR: Linear filtering so sampling this texture in a later pass scales smoothly.
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    // CLAMP_TO_EDGE so a blur sampling past the edge repeats the border pixel
-    // rather than wrapping around to the opposite side.
+    // WRAP_S/T (S = horizontal axis, T = vertical axis) control what the GPU samples when a UV
+    // coordinate falls outside [0,1].
+    // CLAMP_TO_EDGE: pins out-of-range UVs to the nearest edge pixel — any floating-point rounding
+    // past 1.0 gets the border pixel rather than wrapping to the opposite edge, which would bleed
+    // the wrong side of the frame.
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    // Unbind so subsequent unrelated GL calls don't accidentally mutate this texture.
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    // Framebuffer object: a render target that draws into the texture above
-    // instead of the screen. Attaching the texture to COLOR_ATTACHMENT0 wires
-    // "fragment shader output 0 writes here".
+
+    // Allocate a framebuffer object handle.
     glGenFramebuffers(1, &fbo_);
+    // Make fbo_ the active render target so the attachment call below applies to it.
     glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
+    // COLOR_ATTACHMENT0: wires texture_ as the first (and only) color output — fragment
+    // shader writes to layout(location = 0) land in texture_ instead of the screen.
+    // The last arg is mip level 0, the only level we allocated.
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture_, 0);
 
     // A framebuffer can be incomplete (an unsupported size/format combination);
@@ -57,6 +66,7 @@ bool FrameBuffer::ensureSize(int w, int h) {
 }
 
 void FrameBuffer::bind() const {
+    // Make fbo_ the active render target so the attachment call below applies to it.
     glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
     // Each render target carries its own viewport; cover the whole texture.
     glViewport(0, 0, width_, height_);
