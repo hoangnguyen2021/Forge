@@ -48,8 +48,7 @@ bool FullScreenQuad::init() {
     // otherwise glVertexAttribPointer would compute wrong byte offsets and
     // corrupt the geometry silently.
     static_assert(sizeof(QuadVertex) == 4 * sizeof(float), "QuadVertex layout mismatch");
-    // Unbind after upload — OpenGL is a global state machine, leaving a buffer
-    // bound risks later GL calls accidentally modifying it.
+    // Unbind after upload
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     CHECK_GL("FullScreenQuad::init");
@@ -60,9 +59,9 @@ void FullScreenQuad::draw() const {
     // --- Vertex layout description ---
     // Tell the GPU how to unpack bytes from the VBO into vertex shader attributes.
     // glVertexAttribPointer args: (slot, num_floats, type, normalized, stride, byte_offset)
-    //   slot       — must match layout(location = N) in the vertex shader
-    //   num_floats — how many floats to read per vertex for this attribute
-    //   stride     — bytes between the start of one vertex and the next (= sizeof(QuadVertex))
+    //   slot        — must match layout(location = N) in the vertex shader
+    //   num_floats  — how many floats to read per vertex for this attribute
+    //   stride      — bytes between the start of one vertex and the next (= sizeof(QuadVertex))
     //   byte_offset — where in each vertex this attribute starts
     glBindBuffer(GL_ARRAY_BUFFER, vbo_);
     glEnableVertexAttribArray(0);  // activate slot 0 (off by default)
@@ -81,9 +80,7 @@ void FullScreenQuad::draw() const {
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
     // --- Cleanup ---
-    // OpenGL state persists globally between draw calls. Disabling the attribute
-    // slots and unbinding the buffer ensures other passes don't accidentally
-    // read from our VBO.
+    // Disable the attribute slots and unbinding the buffer.
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
