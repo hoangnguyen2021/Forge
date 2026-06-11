@@ -76,15 +76,17 @@ GLuint RenderEngine::createOesTexture() {
     }
 
     // Pass 2 shader: Blits sceneFbo_'s texture to the window surface with straight UVs.
-    present_ = std::make_unique<PresentPass>();
-    if (!present_->init(quad_.get())) {
+    // Built as the concrete type so we can call init(), then stored through the
+    // RenderPass interface — drawFrame only needs the polymorphic draw().
+    auto present = std::make_unique<PresentPass>();
+    if (!present->init(quad_.get())) {
         LOGE("PresentPass init failed");
-        present_.reset();
         renderer_.reset();
         quad_.reset();
         glDeleteTextures(1, &texId);
         return 0;
     }
+    present_ = std::move(present);
 
     // Offscreen target the camera renders into. It is the handoff between the two passes.
     // renderer_ renders into it; present_ samples from it. The insertion point for any future

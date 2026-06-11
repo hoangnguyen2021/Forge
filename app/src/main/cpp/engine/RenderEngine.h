@@ -5,6 +5,7 @@
 #include "../resource/FullScreenQuad.h"
 #include "../shader/PassthroughRenderer.h"
 #include "../shader/PresentPass.h"
+#include "../shader/RenderPass.h"
 
 #include <GLES3/gl3.h>
 #include <android/native_window.h>
@@ -12,15 +13,17 @@
 
 namespace forge {
 
-// Owns the per-surface GL state (EGL context + renderer) and exposes the
-// operations the JNI layer needs. One RenderEngine per camera preview surface;
-// future consumers (encoder input surface, inference target) will share the
-// same EGL context but render into their own outputs.
-//
-// Lifecycle precondition: the destructor assumes the caller has already
-// invoked surfaceDestroyed() on the GL thread. Without that, the implicit
-// unique_ptr cleanup would issue EGL/GL calls on whatever thread `delete`
-// lands on, with no current context.
+/*
+ * Owns the per-surface GL state (EGL context + renderer) and exposes the
+ * operations the JNI layer needs. One RenderEngine per camera preview surface;
+ * future consumers (encoder input surface, inference target) will share the
+ * same EGL context but render into their own outputs.
+ *
+ * Lifecycle precondition: the destructor assumes the caller has already
+ * invoked surfaceDestroyed() on the GL thread. Without that, the implicit
+ * unique_ptr cleanup would issue EGL/GL calls on whatever thread `delete`
+ * lands on, with no current context.
+ */
 class RenderEngine {
 public:
     bool surfaceCreated(ANativeWindow* window);
@@ -43,7 +46,10 @@ private:
     // Offscreen target the camera pass renders into; the present pass then
     // samples it to the screen. Sized to the surface in setViewport.
     std::unique_ptr<FrameBuffer> sceneFbo_;
-    std::unique_ptr<PresentPass> present_;
+    // Held through the RenderPass interface, not the concrete type: the present
+    // pass is just the last link in the chain, and future effect passes will sit
+    // in front of it behind the same interface.
+    std::unique_ptr<RenderPass> present_;
     // Surface (screen) dimensions, needed to reset the viewport for the present
     // pass after an offscreen pass changed it.
     int surfaceW_ = 0;

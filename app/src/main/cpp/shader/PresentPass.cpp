@@ -58,12 +58,12 @@ bool PresentPass::init(const FullScreenQuad* quad) {
     return true;
 }
 
-void PresentPass::draw(GLuint srcTexId) const {
+void PresentPass::draw(GLuint inputTexture) const {
     glUseProgram(program_);
 
     // Bind the scene texture to unit 0 and point the sampler at that unit.
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, srcTexId);
+    glBindTexture(GL_TEXTURE_2D, inputTexture);
     glUniform1i(uTexture_, 0);
 
     quad_->draw();
