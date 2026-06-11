@@ -14,6 +14,7 @@ import android.os.HandlerThread
 import android.util.Size
 import android.view.Surface
 import timber.log.Timber
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executor
 import kotlin.math.abs
 
@@ -43,19 +44,27 @@ class Camera2Session(
     // Posts callbacks onto the same cameraThread as the Handler.
     private val cameraExecutor = Executor { command -> cameraHandler.post(command) }
 
-    // The opened camera hardware handle
     private var cameraDevice: CameraDevice? = null
-
-    // The active streaming session
     private var captureSession: CameraCaptureSession? = null
+
+    // Set by close(); checked by the async open callbacks so a teardown that races
+    // ahead of onOpened/onConfigured doesn't leave a camera or session orphaned.
+    private var closed = false
 
     /*
      * Opens the back camera and starts streaming frames into the provided Surface.
      * The Surface is backed by a SurfaceTexture, making each frame available as an OES texture.
-     * All callbacks are delivered on cameraThread.
+     * The actual work is posted to cameraThread so all camera state stays confined there.
      */
-    @SuppressLint("MissingPermission")
     override fun open(surface: Surface) {
+        cameraHandler.post { openOnCameraThread(surface) }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun openOnCameraThread(surface: Surface) {
+        // close() may have run while this was queued — don't open a camera nobody will close.
+        if (closed) return
+
         val manager = context.getSystemService(CameraManager::class.java)
 
         // Find the back-facing camera ID. Camera2 identifies cameras by string IDs, not enums.
@@ -71,12 +80,21 @@ class Camera2Session(
 
                 // when the hardware is ready to use
                 override fun onOpened(camera: CameraDevice) {
+                    // close() landed between openCamera() and this callback — release the
+                    // device now rather than hold one that will never be closed.
+                    if (closed) {
+                        camera.close()
+                        return
+                    }
                     cameraDevice = camera
                     startPreview(camera, surface)
                 }
 
                 // when another app takes the camera or the device is unplugged.
-                override fun onDisconnected(camera: CameraDevice) = camera.close()
+                override fun onDisconnected(camera: CameraDevice) {
+                    camera.close()
+                    cameraDevice = null
+                }
 
                 // when the camera hits a fatal driver, service, or policy error.
                 override fun onError(
@@ -85,6 +103,7 @@ class Camera2Session(
                 ) {
                     Timber.e("Camera error: $error")
                     camera.close()
+                    cameraDevice = null
                 }
             },
             // callbacks run on cameraHandler's thread
@@ -105,6 +124,11 @@ class Camera2Session(
 
             // when the capture session is ready to accept requests
             override fun onConfigured(session: CameraCaptureSession) {
+                // close() may have run while configuration was in flight — discard the session.
+                if (closed) {
+                    session.close()
+                    return
+                }
                 captureSession = session
 
                 // Build a capture request optimized for preview (auto-exposure, auto-focus, etc.)
@@ -148,12 +172,23 @@ class Camera2Session(
      * Stops the camera and releases all resources in reverse order of acquisition.
      * Closing the session before the device prevents the driver from receiving requests
      * on a device that is already being torn down.
+     *
+     * Teardown is posted to cameraThread (where the fields live) but this call blocks
+     * until it completes: the GL thread releases the SurfaceTexture immediately after
+     * close() returns, so the camera must stop writing into it first. Called from the
+     * GL thread, never from cameraThread, so the await cannot deadlock.
      */
     override fun close() {
-        captureSession?.close() // stop the repeating request and release the pipeline
-        captureSession = null
-        cameraDevice?.close() // release the camera hardware handle
-        cameraDevice = null
+        val latch = CountDownLatch(1)
+        cameraHandler.post {
+            closed = true
+            captureSession?.close() // stop the repeating request and release the pipeline
+            captureSession = null
+            cameraDevice?.close() // release the camera hardware handle
+            cameraDevice = null
+            latch.countDown()
+        }
+        latch.await()
         cameraThread.quitSafely() // drain pending messages then stop the thread's Looper
     }
 
