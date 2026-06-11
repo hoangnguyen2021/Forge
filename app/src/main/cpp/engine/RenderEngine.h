@@ -28,14 +28,8 @@ class RenderEngine {
 public:
     bool surfaceCreated(ANativeWindow* window);
 
-    // Camera input only: creates the OES texture the camera writes into and
-    // returns its id for the caller to wrap in a SurfaceTexture. The render graph
-    // that samples it is built separately by initPipeline().
     GLuint createOesTexture();
 
-    // Builds the render graph (quad + passes + offscreen target) that turns camera
-    // frames into screen pixels. Call after createOesTexture(); returns false on
-    // failure with partial state rolled back.
     bool initPipeline();
 
     void setViewport(int cameraPortraitW, int cameraPortraitH, int surfaceW, int surfaceH);
