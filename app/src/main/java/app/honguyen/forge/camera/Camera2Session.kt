@@ -22,14 +22,6 @@ import kotlin.math.abs
  * Manages the Camera2 lifecycle: opening the back camera, starting a repeating preview,
  * and tearing everything down cleanly.
  *
- * Camera2 is callback-based — it delivers results asynchronously via a Handler rather than
- * suspending/blocking. A dedicated HandlerThread keeps all camera callbacks off the main thread
- * so the UI is never blocked by camera work.
- *
- * Frame flow:
- *   Camera hardware → Surface (Camera2 output target)
- *                   → SurfaceTexture (wraps the Surface, makes frames available as an OES texture)
- *                   → PassthroughRenderer samples the OES texture each frame via OpenGL
  */
 class Camera2Session(
     private val context: Context,
@@ -47,24 +39,14 @@ class Camera2Session(
     private var cameraDevice: CameraDevice? = null
     private var captureSession: CameraCaptureSession? = null
 
-    // Set by close(); checked by the async open callbacks so a teardown that races
-    // ahead of onOpened/onConfigured doesn't leave a camera or session orphaned.
-    private var closed = false
+    private var isSessionClosed = false
 
     /*
      * Opens the back camera and starts streaming frames into the provided Surface.
      * The Surface is backed by a SurfaceTexture, making each frame available as an OES texture.
-     * The actual work is posted to cameraThread so all camera state stays confined there.
      */
-    override fun open(surface: Surface) {
-        cameraHandler.post { openOnCameraThread(surface) }
-    }
-
     @SuppressLint("MissingPermission")
-    private fun openOnCameraThread(surface: Surface) {
-        // close() may have run while this was queued — don't open a camera nobody will close.
-        if (closed) return
-
+    override fun open(surface: Surface) {
         val manager = context.getSystemService(CameraManager::class.java)
         val cameraId = findBackCameraId(manager) ?: return Timber.e("No back camera found")
 
@@ -74,9 +56,9 @@ class Camera2Session(
 
                 // when the hardware is ready to use
                 override fun onOpened(camera: CameraDevice) {
-                    // close() landed between openCamera() and this callback — release the
-                    // device now rather than hold one that will never be closed.
-                    if (closed) {
+                    // close() may have run before the camera finished opening — release it now
+                    // rather than hold a device that will never be closed.
+                    if (isSessionClosed) {
                         camera.close()
                         return
                     }
@@ -119,7 +101,7 @@ class Camera2Session(
             // when the capture session is ready to accept requests
             override fun onConfigured(session: CameraCaptureSession) {
                 // close() may have run while configuration was in flight — discard the session.
-                if (closed) {
+                if (isSessionClosed) {
                     session.close()
                     return
                 }
@@ -166,16 +148,11 @@ class Camera2Session(
      * Stops the camera and releases all resources in reverse order of acquisition.
      * Closing the session before the device prevents the driver from receiving requests
      * on a device that is already being torn down.
-     *
-     * Teardown is posted to cameraThread (where the fields live) but this call blocks
-     * until it completes: the GL thread releases the SurfaceTexture immediately after
-     * close() returns, so the camera must stop writing into it first. Called from the
-     * GL thread, never from cameraThread, so the await cannot deadlock.
      */
     override fun close() {
         val latch = CountDownLatch(1)
         cameraHandler.post {
-            closed = true
+            isSessionClosed = true
             captureSession?.close() // stop the repeating request and release the pipeline
             captureSession = null
             cameraDevice?.close() // release the camera hardware handle

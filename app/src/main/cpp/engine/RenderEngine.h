@@ -26,6 +26,11 @@ namespace forge {
  */
 class RenderEngine {
 public:
+    RenderEngine() = default;
+
+    RenderEngine(const RenderEngine&)            = delete;
+    RenderEngine& operator=(const RenderEngine&) = delete;
+
     bool surfaceCreated(ANativeWindow* window);
 
     GLuint createOesTexture();
