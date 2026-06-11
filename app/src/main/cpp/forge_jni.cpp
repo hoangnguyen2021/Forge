@@ -46,6 +46,13 @@ Java_app_honguyen_forge_engine_RenderEngine_nativeCreateOesTexture(JNIEnv *, jcl
     return static_cast<jint>(asRenderEngine(handle)->createOesTexture());
 }
 
+// Must be called after nativeCreateOesTexture — builds the render graph that
+// samples the camera texture. Returns JNI_TRUE on success, JNI_FALSE on failure.
+JNIEXPORT jboolean JNICALL
+Java_app_honguyen_forge_engine_RenderEngine_nativeInitPipeline(JNIEnv *, jclass, jlong handle) {
+    return asRenderEngine(handle)->initPipeline() ? JNI_TRUE : JNI_FALSE;
+}
+
 JNIEXPORT void JNICALL Java_app_honguyen_forge_engine_RenderEngine_nativeSetViewport(
     JNIEnv *, jclass, jlong handle, jint camW, jint camH, jint surfW, jint surfH) {
     asRenderEngine(handle)->setViewport(camW, camH, surfW, surfH);

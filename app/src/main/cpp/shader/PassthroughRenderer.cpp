@@ -204,9 +204,10 @@ void PassthroughRenderer::draw(const float* texMatrix4x4) const {
 }
 
 // Releases GPU resources allocated by this renderer in init().
-// Only frees what we own — the OES texture is not deleted here (SurfaceTexture
-// owns it on the Java side) and the quad is not deleted here (RenderEngine owns
-// it and shares it across passes). Only the shader program is ours.
+// Only frees what we own — the OES texture is not deleted here (RenderEngine
+// created it and frees it in surfaceDestroyed) and the quad is not deleted here
+// (RenderEngine owns it and shares it across passes). Only the shader program is
+// ours.
 void PassthroughRenderer::destroy() {
     // Free the linked shader program — this releases the compiled vertex + fragment shaders
     // that the GPU driver allocated when we called linkProgram() in init().

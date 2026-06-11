@@ -81,6 +81,9 @@ internal class CameraSurfaceCallback(
             val texId = eng.createOesTexture()
             if (texId == 0) return@post
 
+            // build the render graph that samples the OES texture; bail if it fails
+            if (!eng.initPipeline()) return@post
+
             // allocate SurfaceTexture backed by the OES texture
             val st = SurfaceTexture(texId).also { surfaceTexture = it }
 

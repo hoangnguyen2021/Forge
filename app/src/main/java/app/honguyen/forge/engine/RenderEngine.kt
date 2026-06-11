@@ -17,6 +17,10 @@ class RenderEngine private constructor(
     // Allocate the OES texture used as the camera output target. Returns 0 on failure.
     fun createOesTexture(): Int = nativeCreateOesTexture(handle)
 
+    // Build the render graph that samples the camera texture. Call after
+    // createOesTexture(); returns false on failure.
+    fun initPipeline(): Boolean = nativeInitPipeline(handle)
+
     // Configure camera + surface dimensions; drives the cover-style crop math in the renderer.
     fun setViewport(
         cameraPortraitW: Int,
@@ -57,6 +61,8 @@ class RenderEngine private constructor(
         )
 
         @JvmStatic private external fun nativeCreateOesTexture(handle: Long): Int
+
+        @JvmStatic private external fun nativeInitPipeline(handle: Long): Boolean
 
         @JvmStatic private external fun nativeSetViewport(
             handle: Long,

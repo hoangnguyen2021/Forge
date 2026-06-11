@@ -28,7 +28,15 @@ class RenderEngine {
 public:
     bool surfaceCreated(ANativeWindow* window);
 
+    // Camera input only: creates the OES texture the camera writes into and
+    // returns its id for the caller to wrap in a SurfaceTexture. The render graph
+    // that samples it is built separately by initPipeline().
     GLuint createOesTexture();
+
+    // Builds the render graph (quad + passes + offscreen target) that turns camera
+    // frames into screen pixels. Call after createOesTexture(); returns false on
+    // failure with partial state rolled back.
+    bool initPipeline();
 
     void setViewport(int cameraPortraitW, int cameraPortraitH, int surfaceW, int surfaceH);
 
@@ -38,7 +46,9 @@ public:
 
 private:
     std::unique_ptr<EglContext> egl_;
-    // Shared full-screen geometry, created in createOesTexture and handed to every
+    // OES texture id
+    GLuint oesTexId_ = 0;
+    // Shared full-screen geometry, created in initPipeline and handed to every
     // pass. Held here (not inside a pass) so a single VBO is reused across passes
     // and freed once, on the GL thread, in surfaceDestroyed.
     std::unique_ptr<FullScreenQuad> quad_;

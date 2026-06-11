@@ -24,19 +24,19 @@ bool RenderEngine::surfaceCreated(ANativeWindow* window) {
     return true;
 }
 
-// Allocates the GL texture the camera will write frames into, plus the renderer
-// that samples from it. Returns the texture id so caller can wrap it in a
-// SurfaceTexture, or 0 (GL's reserved invalid-texture sentinel) on failure.
+// Creates the OES texture the camera writes frames into and returns its id so the
+// caller can wrap it in a SurfaceTexture. Only the camera *input* — the render
+// graph that samples it is built separately in initPipeline(). Returns the id, or
+// 0 (GL's reserved invalid-texture sentinel) if the context isn't current.
 GLuint RenderEngine::createOesTexture() {
-    GLuint texId = 0;
     // glGenTextures reserves an id in the driver. The texture object itself
     // is not allocated until the first glBindTexture call below.
-    glGenTextures(1, &texId);
+    glGenTextures(1, &oesTexId_);
 
     // GL_TEXTURE_EXTERNAL_OES is a special texture target that accepts camera
     // and video buffers directly. The driver handles YUV→RGB conversion when
     // sampled — regular sampler2D textures can't do this.
-    glBindTexture(GL_TEXTURE_EXTERNAL_OES, texId);
+    glBindTexture(GL_TEXTURE_EXTERNAL_OES, oesTexId_);
     // MIN_FILTER: GL_LINEAR blends the 4 nearest texels when the texture is shrunk.
     // MAG_FILTER: GL_LINEAR blends when the texture is stretched, avoiding blockiness.
     // GL_LINEAR: the correct ceiling hereOES textures don't support mipmaps, so any
@@ -53,26 +53,34 @@ GLuint RenderEngine::createOesTexture() {
     // Unbind so subsequent unrelated GL calls don't accidentally mutate this texture.
     glBindTexture(GL_TEXTURE_EXTERNAL_OES, 0);
 
+    CHECK_GL("RenderEngine::createOesTexture");
+    return oesTexId_;
+}
+
+// Builds the render graph that turns camera frames into screen pixels: the shared
+// full-screen quad, the camera (pass 1) and present (pass 2) shader passes, and
+// the offscreen target that hands off between them. Must run after
+// createOesTexture() — pass 1 samples that texture — and while the EGL context is
+// current. On any failure it rolls back the partial state and returns false; the
+// OES texture is left untouched because the caller already owns it via its
+// SurfaceTexture.
+bool RenderEngine::initPipeline() {
     // Upload the shared full-screen quad once; every pass reuses this VBO.
     quad_ = std::make_unique<FullScreenQuad>();
     if (!quad_->init()) {
         LOGE("FullScreenQuad init failed");
         quad_.reset();
-        glDeleteTextures(1, &texId);
-        return 0;
+        return false;
     }
 
     // Pass 1 shader: Samples the OES camera texture, applies texMatrix4x4 (sensor orientation +
     // HAL crop) and cover-crop, writes into the bound FBO.
     renderer_ = std::make_unique<PassthroughRenderer>();
-    if (!renderer_->init(texId, quad_.get())) {
+    if (!renderer_->init(oesTexId_, quad_.get())) {
         LOGE("PassthroughRenderer init failed");
         renderer_.reset();
         quad_.reset();
-        // Don't orphan the GL texture if the renderer that was supposed to
-        // own it can't be constructed.
-        glDeleteTextures(1, &texId);
-        return 0;
+        return false;
     }
 
     // Pass 2 shader: Blits sceneFbo_'s texture to the window surface with straight UVs.
@@ -83,8 +91,7 @@ GLuint RenderEngine::createOesTexture() {
         LOGE("PresentPass init failed");
         renderer_.reset();
         quad_.reset();
-        glDeleteTextures(1, &texId);
-        return 0;
+        return false;
     }
     present_ = std::move(present);
 
@@ -93,8 +100,8 @@ GLuint RenderEngine::createOesTexture() {
     // effect pass.
     sceneFbo_ = std::make_unique<FrameBuffer>();
 
-    CHECK_GL("RenderEngine::createOesTexture");
-    return texId;
+    CHECK_GL("RenderEngine::initPipeline");
+    return true;
 }
 
 // Passes camera and surface dimensions to the renderer so it can compute the
@@ -159,6 +166,8 @@ void RenderEngine::surfaceDestroyed() {
     sceneFbo_.reset();
     renderer_.reset();
     quad_.reset();
+    glDeleteTextures(1, &oesTexId_);
+    oesTexId_ = 0;
     egl_.reset();
 }
 
