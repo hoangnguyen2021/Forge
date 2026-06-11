@@ -66,13 +66,7 @@ class Camera2Session(
         if (closed) return
 
         val manager = context.getSystemService(CameraManager::class.java)
-
-        // Find the back-facing camera ID. Camera2 identifies cameras by string IDs, not enums.
-        val cameraId = manager.cameraIdList.firstOrNull { id ->
-            manager
-                .getCameraCharacteristics(id)
-                .get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK
-        } ?: return Timber.e("No back camera found")
+        val cameraId = findBackCameraId(manager) ?: return Timber.e("No back camera found")
 
         manager.openCamera(
             cameraId,
@@ -197,7 +191,6 @@ class Camera2Session(
         private const val DEFAULT_PREVIEW_WIDTH = 1920
         private const val DEFAULT_PREVIEW_HEIGHT = 1080
         private const val DEFAULT_SENSOR_ORIENTATION = 90
-        private const val SENSOR_ORIENTATION_HALF_ROTATION = 180
 
         private val DEFAULT_PREVIEW_FALLBACK =
             PreviewSize(Size(DEFAULT_PREVIEW_WIDTH, DEFAULT_PREVIEW_HEIGHT), DEFAULT_SENSOR_ORIENTATION)
@@ -213,11 +206,7 @@ class Camera2Session(
             targetHeight: Int,
         ): PreviewSize {
             val manager = context.getSystemService(CameraManager::class.java)
-            val cameraId = manager.cameraIdList.firstOrNull { id ->
-                manager
-                    .getCameraCharacteristics(id)
-                    .get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK
-            } ?: return DEFAULT_PREVIEW_FALLBACK
+            val cameraId = findBackCameraId(manager) ?: return DEFAULT_PREVIEW_FALLBACK
 
             val characteristics = manager.getCameraCharacteristics(cameraId)
 
@@ -233,10 +222,11 @@ class Camera2Session(
 
             val targetAspect = targetWidth.toFloat() / targetHeight.toFloat()
 
-            // If sensorOrientation is 90° or 270°, the camera's width and height are swapped
+            // If the sensor is mounted sideways the camera's width and height are swapped
             // relative to the screen — account for this before comparing aspect ratios.
+            val sideways = PreviewSize.isSensorSideways(sensorOrientation)
             val best = sizes.minByOrNull { size ->
-                val (pW, pH) = if (sensorOrientation % SENSOR_ORIENTATION_HALF_ROTATION == DEFAULT_SENSOR_ORIENTATION) {
+                val (pW, pH) = if (sideways) {
                     size.height.toFloat() to size.width.toFloat()
                 } else {
                     size.width.toFloat() to size.height.toFloat()
@@ -247,5 +237,13 @@ class Camera2Session(
             Timber.i("Selected preview size: ${best.width}x${best.height} sensorOrientation=$sensorOrientation")
             return PreviewSize(best, sensorOrientation)
         }
+
+        // The back-facing camera's string ID, or null if the device has none.
+        private fun findBackCameraId(manager: CameraManager): String? =
+            manager.cameraIdList.firstOrNull { id ->
+                manager
+                    .getCameraCharacteristics(id)
+                    .get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK
+            }
     }
 }

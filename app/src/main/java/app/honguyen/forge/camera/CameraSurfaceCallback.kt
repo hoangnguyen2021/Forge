@@ -10,11 +10,6 @@ import android.view.SurfaceHolder
 import app.honguyen.forge.engine.RenderEngine
 import java.util.concurrent.CountDownLatch
 
-// Sensor orientation is reported in degrees. If it is 90° or 270°, the sensor is mounted
-// sideways relative to the device's natural orientation, so width and height are swapped.
-private const val SENSOR_ORIENTATION_HALF_TURN = 180
-private const val SENSOR_ORIENTATION_QUARTER_TURN = 90
-
 /*
  * Handles the SurfaceView lifecycle and wires the camera preview into the OpenGL pipeline.
  *
@@ -121,32 +116,22 @@ internal class CameraSurfaceCallback(
         height: Int,
     ) {
         // pick the camera output size whose aspect ratio best matches the surface
-        val (size, sensorOrientation) = Camera2Session.selectPreviewSize(
+        val previewSize = Camera2Session.selectPreviewSize(
             context = context,
             targetWidth = width,
             targetHeight = height,
         )
 
-        // sensors mounted at 90° or 270° have their width and height swapped relative to the screen;
-        // flip them so the viewport receives dimensions in portrait orientation
-        val isSideways =
-            sensorOrientation % SENSOR_ORIENTATION_HALF_TURN == SENSOR_ORIENTATION_QUARTER_TURN
-        val (camPortraitW, camPortraitH) = if (isSideways) {
-            size.height to size.width
-        } else {
-            size.width to size.height
-        }
-
         glHandler?.post {
             val st = surfaceTexture ?: return@post
 
             // tell SurfaceTexture how large each incoming frame will be so it allocates the right buffer
-            st.setDefaultBufferSize(size.width, size.height)
+            st.setDefaultBufferSize(previewSize.size.width, previewSize.size.height)
 
-            // pass camera and surface dimensions to the renderer so it can compute the crop scale
+            // pass camera and surface dimensions to the renderer so it can compute the crop scale.
             engine?.setViewport(
-                cameraPortraitW = camPortraitW,
-                cameraPortraitH = camPortraitH,
+                cameraPortraitW = previewSize.portraitWidth,
+                cameraPortraitH = previewSize.portraitHeight,
                 surfaceW = width,
                 surfaceH = height,
             )
