@@ -25,8 +25,10 @@ data class PreviewSize(
         private const val HALF_TURN_DEGREES = 180
         private const val QUARTER_TURN_DEGREES = 90
 
-        // A sensor at 90° or 270° is mounted sideways relative to the device's natural
-        // orientation, so its frame's width and height are swapped relative to the screen.
+        /*
+         * A sensor at 90° or 270° is mounted sideways relative to the device's natural
+         * orientation, so its frame's width and height are swapped relative to the screen.
+         */
         fun isSensorSideways(degrees: Int): Boolean = degrees % HALF_TURN_DEGREES == QUARTER_TURN_DEGREES
     }
 }

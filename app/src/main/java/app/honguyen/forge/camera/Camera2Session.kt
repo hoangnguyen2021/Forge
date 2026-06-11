@@ -215,7 +215,9 @@ class Camera2Session(
             return PreviewSize(best, sensorOrientation)
         }
 
-        // The back-facing camera's string ID, or null if the device has none.
+        /*
+         * The back-facing camera's string ID, or null if the device has none.
+         */
         private fun findBackCameraId(manager: CameraManager): String? =
             manager.cameraIdList.firstOrNull { id ->
                 manager
