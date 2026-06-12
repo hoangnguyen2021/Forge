@@ -3,11 +3,53 @@
 #include "../CheckGl.h"
 
 #include <GLES2/gl2ext.h>
+#include <string_view>
 
 #define LOG_TAG "RenderEngine"
 #include "../Log.h"
 
 namespace forge {
+
+// First effect occupying the slot between the camera pass and present: a 3x3 Sobel
+// edge detector. For each pixel it reads the 8 neighbours (stepping by uTexelSize),
+// approximates the luminance gradient with the horizontal/vertical Sobel kernels,
+// and outputs the gradient magnitude as white-on-black edges. Chosen as the first
+// effect because the result is unmistakable — direct proof the pass is wired into
+// the chain — and the neighbour-sampling machinery (uTexelSize, the 3x3 tap
+// pattern) is exactly what a Gaussian blur and segmentation-mask feathering reuse.
+static constexpr std::string_view kSobelFragSrc = R"GLSL(
+    #version 300 es
+    precision mediump float;
+    in vec2 vTexCoord;
+    uniform sampler2D uTexture;
+    uniform vec2 uTexelSize;   // size of one texel in UV space (1/width, 1/height)
+    out vec4 fragColor;
+
+    // Perceptual luminance of the pixel at uv (Rec. 601 weights).
+    float luma(vec2 uv) {
+        vec3 c = texture(uTexture, uv).rgb;
+        return dot(c, vec3(0.299, 0.587, 0.114));
+    }
+
+    void main() {
+        vec2 t = uTexelSize;
+        // Sample the 3x3 luminance neighbourhood around this pixel.
+        float tl = luma(vTexCoord + vec2(-t.x,  t.y));
+        float tc = luma(vTexCoord + vec2( 0.0,  t.y));
+        float tr = luma(vTexCoord + vec2( t.x,  t.y));
+        float ml = luma(vTexCoord + vec2(-t.x,  0.0));
+        float mr = luma(vTexCoord + vec2( t.x,  0.0));
+        float bl = luma(vTexCoord + vec2(-t.x, -t.y));
+        float bc = luma(vTexCoord + vec2( 0.0, -t.y));
+        float br = luma(vTexCoord + vec2( t.x, -t.y));
+        // Sobel gradient: horizontal (gx) and vertical (gy) convolution kernels.
+        float gx = -tl - 2.0 * ml - bl + tr + 2.0 * mr + br;
+        float gy =  tl + 2.0 * tc + tr - bl - 2.0 * bc - br;
+        // Gradient magnitude is the edge strength, drawn as white edges on black.
+        float edge = length(vec2(gx, gy));
+        fragColor = vec4(vec3(edge), 1.0);
+    }
+)GLSL";
 
 // Creates the EGL context bound to the given Android window. Must run on the
 // thread that will later issue draw calls — EGL contexts are thread-local and
@@ -58,12 +100,12 @@ GLuint RenderEngine::createOesTexture() {
 }
 
 // Builds the render graph that turns camera frames into screen pixels: the shared
-// full-screen quad, the camera (pass 1) and present (pass 2) shader passes, and
-// the offscreen target that hands off between them. Must run after
-// createOesTexture() — pass 1 samples that texture — and while the EGL context is
-// current. On any failure it rolls back the partial state and returns false; the
-// OES texture is left untouched because the caller already owns it via its
-// SurfaceTexture.
+// full-screen quad, the camera (pass 1), effect (pass 2), and present (pass 3)
+// shader passes, and the offscreen targets that hand off between them. Must run
+// after createOesTexture() — pass 1 samples that texture — and while the EGL
+// context is current. On any failure it rolls back the partial state and returns
+// false; the OES texture is left untouched because the caller already owns it via
+// its SurfaceTexture.
 bool RenderEngine::initPipeline() {
     // Upload the shared full-screen quad once; every pass reuses this VBO.
     quad_ = std::make_unique<FullScreenQuad>();
@@ -83,22 +125,38 @@ bool RenderEngine::initPipeline() {
         return false;
     }
 
-    // Pass 2 shader: Blits sceneFbo_'s texture to the window surface with straight UVs.
+    // Pass 2 shader: samples sceneFbo_ and writes the processed result into
+    // effectFbo_. The fragment shader (kSobelFragSrc) defines the look; EffectPass
+    // itself is effect-agnostic. Held as the concrete type because drawFrame drives
+    // its setResolution() in addition to the polymorphic draw().
+    auto effect = std::make_unique<EffectPass>();
+    if (!effect->init(quad_.get(), kSobelFragSrc)) {
+        LOGE("EffectPass init failed");
+        renderer_.reset();
+        quad_.reset();
+        return false;
+    }
+    effect_ = std::move(effect);
+
+    // Pass 3 shader: Blits effectFbo_'s texture to the window surface with straight UVs.
     // Built as the concrete type so we can call init(), then stored through the
     // RenderPass interface — drawFrame only needs the polymorphic draw().
     auto present = std::make_unique<PresentPass>();
     if (!present->init(quad_.get())) {
         LOGE("PresentPass init failed");
+        effect_.reset();
         renderer_.reset();
         quad_.reset();
         return false;
     }
     present_ = std::move(present);
 
-    // Offscreen target the camera renders into. It is the handoff between the two passes.
-    // renderer_ renders into it; present_ samples from it. The insertion point for any future
-    // effect pass.
-    sceneFbo_ = std::make_unique<FrameBuffer>();
+    // Offscreen targets that hand off between passes: renderer_ renders into
+    // sceneFbo_, effect_ samples sceneFbo_ and renders into effectFbo_, present_
+    // samples effectFbo_. Inserting another effect means adding one more FBO to this
+    // chain. Both are sized to the surface in setViewport.
+    sceneFbo_  = std::make_unique<FrameBuffer>();
+    effectFbo_ = std::make_unique<FrameBuffer>();
 
     CHECK_GL("RenderEngine::initPipeline");
     return true;
@@ -116,10 +174,19 @@ void RenderEngine::setViewport(int camW, int camH, int surfW, int surfH) {
     if (renderer_) {
         renderer_->setViewport(camW, camH, surfW, surfH);
     }
-    // Size the offscreen target to match the screen so the scene is rendered at
+    // Size both offscreen targets to match the screen so each stage renders at
     // display resolution. ensureSize is a no-op unless the size changed.
     if (sceneFbo_) {
         sceneFbo_->ensureSize(surfW, surfH);
+    }
+    if (effectFbo_) {
+        effectFbo_->ensureSize(surfW, surfH);
+    }
+    // The effect samples a surface-sized texture, so its texel size tracks the
+    // surface too — a wrong texel size would offset neighbour reads by the wrong
+    // distance and smear or shrink the edges.
+    if (effect_) {
+        effect_->setResolution(surfW, surfH);
     }
 }
 
@@ -128,12 +195,14 @@ void RenderEngine::setViewport(int camW, int camH, int surfW, int surfH) {
 // transform from SurfaceTexture.getTransformMatrix() that compensates for sensor
 // orientation and HAL crop — it must be re-read every frame.
 //
-// Graph: camera OES --[camera pass]--> sceneFbo --[present pass]--> screen.
-// The intermediate FBO is the seam where future effect/ML passes will slot in.
+// Graph: camera OES --[camera pass]--> sceneFbo --[effect pass]--> effectFbo
+//        --[present pass]--> screen. The intermediate FBOs are the seams where
+// future effect/ML passes slot in.
 void RenderEngine::drawFrame(const float* texMatrix4x4) {
     // Defensive guard: a queued onFrameAvailable can fire after surfaceDestroyed
-    // has cleared state, or before setViewport has sized the offscreen target.
-    if (!egl_ || !renderer_ || !present_ || !sceneFbo_ || !sceneFbo_->ready()) {
+    // has cleared state, or before setViewport has sized the offscreen targets.
+    if (!egl_ || !renderer_ || !effect_ || !present_ || !sceneFbo_ || !sceneFbo_->ready() ||
+        !effectFbo_ || !effectFbo_->ready()) {
         return;
     }
 
@@ -147,11 +216,17 @@ void RenderEngine::drawFrame(const float* texMatrix4x4) {
     glClear(GL_COLOR_BUFFER_BIT);
     renderer_->draw(texMatrix4x4);
 
-    // Pass 2: scene texture -> screen. Bind the default framebuffer (0) and
-    // restore the surface viewport, since the FBO bind changed it.
+    // Pass 2: scene texture -> effect texture. bind() retargets to effectFbo_ and
+    // sets the viewport to its size; the effect samples the scene and writes the
+    // processed result. No clear needed — the effect writes every pixel.
+    effectFbo_->bind();
+    effect_->draw(sceneFbo_->textureId());
+
+    // Pass 3: effect texture -> screen. Bind the default framebuffer (0) and
+    // restore the surface viewport, since the FBO binds changed it.
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, surfaceW_, surfaceH_);
-    present_->draw(sceneFbo_->textureId());
+    present_->draw(effectFbo_->textureId());
 
     CHECK_GL("RenderEngine::drawFrame");
     // Promote the just-rendered back buffer to the front buffer so the user sees it.
@@ -164,6 +239,8 @@ void RenderEngine::drawFrame(const float* texMatrix4x4) {
 // Tearing down EGL first would orphan those objects in the driver.
 void RenderEngine::surfaceDestroyed() {
     present_.reset();
+    effectFbo_.reset();
+    effect_.reset();
     sceneFbo_.reset();
     renderer_.reset();
     quad_.reset();

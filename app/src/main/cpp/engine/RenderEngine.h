@@ -3,6 +3,7 @@
 #include "../egl/EglContext.h"
 #include "../resource/FrameBuffer.h"
 #include "../resource/FullScreenQuad.h"
+#include "../shader/EffectPass.h"
 #include "../shader/PassthroughRenderer.h"
 #include "../shader/PresentPass.h"
 #include "../shader/RenderPass.h"
@@ -52,9 +53,17 @@ private:
     // and freed once, on the GL thread, in surfaceDestroyed.
     std::unique_ptr<FullScreenQuad> quad_;
     std::unique_ptr<PassthroughRenderer> renderer_;
-    // Offscreen target the camera pass renders into; the present pass then
-    // samples it to the screen. Sized to the surface in setViewport.
+    // Offscreen target the camera pass renders into; the effect pass then samples
+    // it. Sized to the surface in setViewport.
     std::unique_ptr<FrameBuffer> sceneFbo_;
+    // Effect slot between the camera pass and present: samples sceneFbo_ and writes
+    // effectFbo_. Held as the concrete type (not RenderPass) because it needs
+    // setResolution() for its texel-size uniform, which the uniform draw(input)
+    // chain doesn't expose.
+    std::unique_ptr<EffectPass> effect_;
+    // Offscreen target the effect pass renders into; present_ samples this instead
+    // of sceneFbo_. Surface-sized, like sceneFbo_.
+    std::unique_ptr<FrameBuffer> effectFbo_;
     // Held through the RenderPass interface, not the concrete type: the present
     // pass is just the last link in the chain, and future effect passes will sit
     // in front of it behind the same interface.

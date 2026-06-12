@@ -18,6 +18,7 @@ add_library(forge_engine SHARED
     shader/ShaderProgram.cpp
     shader/PassthroughRenderer.cpp
     shader/PresentPass.cpp
+    shader/EffectPass.cpp
 )
 
 target_compile_features(forge_engine PRIVATE cxx_std_17)
