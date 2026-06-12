@@ -191,7 +191,8 @@ void PassthroughRenderer::draw(const float* texMatrix4x4) const {
     // texMatrix4x4 changes every frame as SurfaceTexture delivers a new camera buffer.
     // '1' = uploading one matrix, GL_FALSE = not transposed.
     glUniformMatrix4fv(uTexMatrix_, 1, GL_FALSE, texMatrix4x4);
-    // cropScale/cropOffset are stable until setViewport() is called again (e.g. on rotation).
+    // cropScale/cropOffset are stable until setViewport() is called again (e.g. a
+    // surface resize from split-screen or a foldable; the preview is portrait-locked).
     glUniform2f(uCropScale_, cropScaleX_, cropScaleY_);
     glUniform2f(uCropOffset_, cropOffsetX_, cropOffsetY_);
 

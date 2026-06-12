@@ -12,9 +12,9 @@ bool FrameBuffer::ensureSize(int w, int h) {
     if (fbo_ != 0 && w == width_ && h == height_) {
         return true;
     }
-    // First allocation or a size change (e.g. rotation): drop any existing
-    // objects and rebuild. Recreating is simpler than re-specifying storage and
-    // happens rarely — never per frame.
+    // First allocation or a size change (e.g. entering split-screen): drop any
+    // existing objects and rebuild. Recreating is simpler than re-specifying storage
+    // and happens rarely — never per frame.
     destroy();
 
     // Color texture the pass renders into and later passes sample from.

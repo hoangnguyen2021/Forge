@@ -111,7 +111,8 @@ void RenderEngine::setViewport(int camW, int camH, int surfW, int surfH) {
     surfaceW_ = surfW;
     surfaceH_ = surfH;
     // Forward dimensions so the camera pass can recompute the cover-crop matrix —
-    // the ratio of camera vs surface may change on rotation or surface resize.
+    // the ratio of camera vs surface may change on a surface resize (split-screen,
+    // foldable). The preview is portrait-locked, so device rotation never triggers this.
     if (renderer_) {
         renderer_->setViewport(camW, camH, surfW, surfH);
     }
