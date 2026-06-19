@@ -1,9 +1,12 @@
 #include "RenderEngine.h"
 
 #include "../CheckGl.h"
+#include "../shader/EffectPass.h"
+#include "../shader/PresentPass.h"
 
 #include <GLES2/gl2ext.h>
 #include <string_view>
+#include <utility>
 
 #define LOG_TAG "RenderEngine"
 #include "../Log.h"
@@ -100,93 +103,88 @@ GLuint RenderEngine::createOesTexture() {
 }
 
 // Builds the render graph that turns camera frames into screen pixels: the shared
-// full-screen quad, the camera (pass 1), effect (pass 2), and present (pass 3)
-// shader passes, and the offscreen targets that hand off between them. Must run
-// after createOesTexture() — pass 1 samples that texture — and while the EGL
-// context is current. On any failure it rolls back the partial state and returns
-// false; the OES texture is left untouched because the caller already owns it via
-// its SurfaceTexture.
+// full-screen quad, the camera head pass, the effect chain, the present pass, and
+// the two ping-pong targets the chain hands off through. Must run after
+// createOesTexture() — the camera pass samples that texture — and while the EGL
+// context is current. Each stage is built into a local first and only committed to
+// members once every step has succeeded; a partial failure returns false and the
+// locals free their GL objects via RAII on this (the GL) thread, leaving the engine
+// untouched. The OES texture is left alone — the caller owns it via its SurfaceTexture.
 bool RenderEngine::initPipeline() {
-    // Upload the shared full-screen quad once; every pass reuses this VBO.
-    quad_ = std::make_unique<FullScreenQuad>();
-    if (!quad_->init()) {
+    // Shared full-screen quad; every pass reuses this one VBO.
+    auto quad = std::make_unique<FullScreenQuad>();
+    if (!quad->init()) {
         LOGE("FullScreenQuad init failed");
-        quad_.reset();
         return false;
     }
 
-    // Pass 1 shader: Samples the OES camera texture, applies texMatrix4x4 (sensor orientation +
-    // HAL crop) and cover-crop, writes into the bound FBO.
-    renderer_ = std::make_unique<PassthroughRenderer>();
-    if (!renderer_->init(oesTexId_, quad_.get())) {
+    // Head pass: samples the OES camera texture, applies texMatrix4x4 (sensor
+    // orientation + HAL crop) and cover-crop, renders into the first ping-pong target.
+    auto camera = std::make_unique<PassthroughRenderer>();
+    if (!camera->init(oesTexId_, quad.get())) {
         LOGE("PassthroughRenderer init failed");
-        renderer_.reset();
-        quad_.reset();
         return false;
     }
 
-    // Pass 2 shader: samples sceneFbo_ and writes the processed result into
-    // effectFbo_. The fragment shader (kSobelFragSrc) defines the look; EffectPass
-    // itself is effect-agnostic. Held as the concrete type because drawFrame drives
-    // its setResolution() in addition to the polymorphic draw().
-    auto effect = std::make_unique<EffectPass>();
-    if (!effect->init(quad_.get(), kSobelFragSrc)) {
+    // Effect chain. Each entry samples the previous stage's output; the fragment
+    // shader defines the look while EffectPass stays effect-agnostic. Append an
+    // effect here to extend the chain — nothing else in the engine changes.
+    std::vector<std::unique_ptr<RenderPass>> effects;
+    auto sobel = std::make_unique<EffectPass>();
+    if (!sobel->init(quad.get(), kSobelFragSrc)) {
         LOGE("EffectPass init failed");
-        renderer_.reset();
-        quad_.reset();
         return false;
     }
-    effect_ = std::move(effect);
+    effects.push_back(std::move(sobel));
 
-    // Pass 3 shader: Blits effectFbo_'s texture to the window surface with straight UVs.
-    // Built as the concrete type so we can call init(), then stored through the
-    // RenderPass interface — drawFrame only needs the polymorphic draw().
+    // Final pass: blits the chain's output to the window with straight UVs.
     auto present = std::make_unique<PresentPass>();
-    if (!present->init(quad_.get())) {
+    if (!present->init(quad.get())) {
         LOGE("PresentPass init failed");
-        effect_.reset();
-        renderer_.reset();
-        quad_.reset();
         return false;
     }
-    present_ = std::move(present);
 
-    // Offscreen targets that hand off between passes: renderer_ renders into
-    // sceneFbo_, effect_ samples sceneFbo_ and renders into effectFbo_, present_
-    // samples effectFbo_. Inserting another effect means adding one more FBO to this
-    // chain. Both are sized to the surface in setViewport.
-    sceneFbo_  = std::make_unique<FrameBuffer>();
-    effectFbo_ = std::make_unique<FrameBuffer>();
+    // Two offscreen targets the chain ping-pongs between, sized later in setViewport.
+    auto ping = std::make_unique<FrameBuffer>();
+    auto pong = std::make_unique<FrameBuffer>();
+
+    // Commit: every step succeeded, so move the locals into members in one shot. The
+    // passes cached quad.get(), whose pointee address is unchanged by the unique_ptr move.
+    quad_        = std::move(quad);
+    camera_      = std::move(camera);
+    effects_     = std::move(effects);
+    present_     = std::move(present);
+    pingPong_[0] = std::move(ping);
+    pingPong_[1] = std::move(pong);
 
     CHECK_GL("RenderEngine::initPipeline");
     return true;
 }
 
-// Passes camera and surface dimensions to the renderer so it can compute the
-// cover-style crop. Null-guarded because setViewport may be called before
-// createOesTexture has succeeded, or after surfaceDestroyed has cleared state.
+// Passes camera and surface dimensions down the graph so each stage can resize.
+// Null-guarded because setViewport may be called before initPipeline has built the
+// graph, or after surfaceDestroyed has cleared it.
 void RenderEngine::setViewport(int camW, int camH, int surfW, int surfH) {
     surfaceW_ = surfW;
     surfaceH_ = surfH;
     // Forward dimensions so the camera pass can recompute the cover-crop matrix —
     // the ratio of camera vs surface may change on a surface resize (split-screen,
     // foldable). The preview is portrait-locked, so device rotation never triggers this.
-    if (renderer_) {
-        renderer_->setViewport(camW, camH, surfW, surfH);
+    if (camera_) {
+        camera_->setViewport(camW, camH, surfW, surfH);
     }
-    // Size both offscreen targets to match the screen so each stage renders at
-    // display resolution. ensureSize is a no-op unless the size changed.
-    if (sceneFbo_) {
-        sceneFbo_->ensureSize(surfW, surfH);
+    // Size both ping-pong targets to the surface so every stage renders at display
+    // resolution. ensureSize is a no-op unless the size changed.
+    for (auto& fbo : pingPong_) {
+        if (fbo) {
+            fbo->ensureSize(surfW, surfH);
+        }
     }
-    if (effectFbo_) {
-        effectFbo_->ensureSize(surfW, surfH);
-    }
-    // The effect samples a surface-sized texture, so its texel size tracks the
-    // surface too — a wrong texel size would offset neighbour reads by the wrong
-    // distance and smear or shrink the edges.
-    if (effect_) {
-        effect_->setResolution(surfW, surfH);
+    // Let each effect react to the new resolution (e.g. recompute its texel size for
+    // neighbour sampling — a wrong texel size would offset neighbour reads and smear
+    // the result). Passes that don't care inherit RenderPass's no-op onViewport.
+    for (const auto& effect : effects_) {
+        effect->onViewport(surfW, surfH);
     }
 }
 
@@ -195,38 +193,42 @@ void RenderEngine::setViewport(int camW, int camH, int surfW, int surfH) {
 // transform from SurfaceTexture.getTransformMatrix() that compensates for sensor
 // orientation and HAL crop — it must be re-read every frame.
 //
-// Graph: camera OES --[camera pass]--> sceneFbo --[effect pass]--> effectFbo
-//        --[present pass]--> screen. The intermediate FBOs are the seams where
-// future effect/ML passes slot in.
+// Graph: camera OES --[camera]--> pingPong[0] --[effect..]--> pingPong[..] --[present]--> screen.
+// The effect chain ping-pongs between the two targets; present blits whichever holds
+// the final result. With no effects, present blits the camera output directly.
 void RenderEngine::drawFrame(const float* texMatrix4x4) {
     // Defensive guard: a queued onFrameAvailable can fire after surfaceDestroyed
-    // has cleared state, or before setViewport has sized the offscreen targets.
-    if (!egl_ || !renderer_ || !effect_ || !present_ || !sceneFbo_ || !sceneFbo_->ready() ||
-        !effectFbo_ || !effectFbo_->ready()) {
+    // has cleared state, or before setViewport has sized the ping-pong targets.
+    if (!egl_ || !camera_ || !present_ || !pingPong_[0] || !pingPong_[0]->ready() ||
+        !pingPong_[1] || !pingPong_[1]->ready()) {
         return;
     }
 
-    // Pass 1: camera -> offscreen scene texture. The camera pass applies crop and
-    // orientation while rendering into the FBO. bind() also sets the viewport to
-    // the FBO size.
-    sceneFbo_->bind();
+    // Head pass: camera -> pingPong_[0]. The camera pass applies crop and orientation
+    // while rendering into the FBO; bind() also sets the viewport to the FBO size.
+    pingPong_[0]->bind();
     // Clear so any pixel not covered by the camera quad reads black rather than
     // last-frame garbage (defensive — cover-mode crop fills the target, but a
     // transient mismatch frame on resize can leave gaps).
     glClear(GL_COLOR_BUFFER_BIT);
-    renderer_->draw(texMatrix4x4);
+    camera_->draw(texMatrix4x4);
 
-    // Pass 2: scene texture -> effect texture. bind() retargets to effectFbo_ and
-    // sets the viewport to its size; the effect samples the scene and writes the
-    // processed result. No clear needed — the effect writes every pixel.
-    effectFbo_->bind();
-    effect_->draw(sceneFbo_->textureId());
+    // Effect chain: each pass reads the previous target and writes the other. No clear
+    // needed — an effect writes every pixel. After the loop, src indexes the target
+    // holding the final result.
+    int src = 0;
+    int dst = 1;
+    for (const auto& effect : effects_) {
+        pingPong_[dst]->bind();
+        effect->draw(pingPong_[src]->textureId());
+        std::swap(src, dst);
+    }
 
-    // Pass 3: effect texture -> screen. Bind the default framebuffer (0) and
-    // restore the surface viewport, since the FBO binds changed it.
+    // Present: final target -> screen. Bind the default framebuffer (0) and restore
+    // the surface viewport, since the FBO binds changed it.
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, surfaceW_, surfaceH_);
-    present_->draw(effectFbo_->textureId());
+    present_->draw(pingPong_[src]->textureId());
 
     CHECK_GL("RenderEngine::drawFrame");
     // Promote the just-rendered back buffer to the front buffer so the user sees it.
@@ -234,15 +236,15 @@ void RenderEngine::drawFrame(const float* texMatrix4x4) {
 }
 
 // Releases per-surface GL state in reverse order of acquisition. Must run on
-// the GL thread while the EGL context is still current — the renderer's
-// destructor frees GPU objects (program, VBO) that require a current context.
-// Tearing down EGL first would orphan those objects in the driver.
+// the GL thread while the EGL context is still current — the passes' destructors
+// free GPU objects (programs, VBO, FBOs) that require a current context. Tearing
+// down EGL first would orphan those objects in the driver.
 void RenderEngine::surfaceDestroyed() {
     present_.reset();
-    effectFbo_.reset();
-    effect_.reset();
-    sceneFbo_.reset();
-    renderer_.reset();
+    effects_.clear();
+    camera_.reset();
+    pingPong_[0].reset();
+    pingPong_[1].reset();
     quad_.reset();
     glDeleteTextures(1, &oesTexId_);
     oesTexId_ = 0;

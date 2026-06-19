@@ -29,6 +29,12 @@ public:
     // Sample inputTexture (a GL_TEXTURE_2D) into the currently bound framebuffer.
     virtual void draw(GLuint inputTexture) const = 0;
 
+    // Notify the pass that the render-target resolution changed. Default no-op;
+    // passes that derive per-pixel state from resolution (e.g. an effect's texel
+    // size for neighbour sampling) override it. Driven by RenderEngine::setViewport,
+    // so the engine can resize the whole chain uniformly without knowing concrete types.
+    virtual void onViewport(int /*width*/, int /*height*/) {}
+
 protected:
     RenderPass() = default;
 };

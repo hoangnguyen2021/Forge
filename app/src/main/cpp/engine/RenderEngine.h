@@ -3,14 +3,13 @@
 #include "../egl/EglContext.h"
 #include "../resource/FrameBuffer.h"
 #include "../resource/FullScreenQuad.h"
-#include "../shader/EffectPass.h"
 #include "../shader/PassthroughRenderer.h"
-#include "../shader/PresentPass.h"
 #include "../shader/RenderPass.h"
 
 #include <GLES3/gl3.h>
 #include <android/native_window.h>
 #include <memory>
+#include <vector>
 
 namespace forge {
 
@@ -52,22 +51,23 @@ private:
     // pass. Held here (not inside a pass) so a single VBO is reused across passes
     // and freed once, on the GL thread, in surfaceDestroyed.
     std::unique_ptr<FullScreenQuad> quad_;
-    std::unique_ptr<PassthroughRenderer> renderer_;
-    // Offscreen target the camera pass renders into; the effect pass then samples
-    // it. Sized to the surface in setViewport.
-    std::unique_ptr<FrameBuffer> sceneFbo_;
-    // Effect slot between the camera pass and present: samples sceneFbo_ and writes
-    // effectFbo_. Held as the concrete type (not RenderPass) because it needs
-    // setResolution() for its texel-size uniform, which the uniform draw(input)
-    // chain doesn't expose.
-    std::unique_ptr<EffectPass> effect_;
-    // Offscreen target the effect pass renders into; present_ samples this instead
-    // of sceneFbo_. Surface-sized, like sceneFbo_.
-    std::unique_ptr<FrameBuffer> effectFbo_;
-    // Held through the RenderPass interface, not the concrete type: the present
-    // pass is just the last link in the chain, and future effect passes will sit
-    // in front of it behind the same interface.
+    // Head pass: samples the OES camera texture (plus the per-frame SurfaceTexture
+    // matrix) and renders the cropped, oriented frame into pingPong_[0]. Kept as the
+    // concrete type, outside the effects_ chain, because its input differs from a
+    // RenderPass (external OES + matrix, not a 2D texture).
+    std::unique_ptr<PassthroughRenderer> camera_;
+    // Ordered effect chain, each behind the RenderPass interface. Every pass samples
+    // the previous stage's output and writes the next ping-pong target, so extending
+    // the chain is a single push_back in initPipeline — no new members or wiring.
+    std::vector<std::unique_ptr<RenderPass>> effects_;
+    // Final pass: blits whichever ping-pong target holds the final result to the
+    // window. Behind RenderPass like the effects — just the last link in the chain.
     std::unique_ptr<RenderPass> present_;
+    // The two offscreen targets the chain ping-pongs between: the camera renders into
+    // [0], each effect reads one and writes the other, and present_ samples the last
+    // one written. Two suffice for any chain length; both are surface-sized in
+    // setViewport.
+    std::unique_ptr<FrameBuffer> pingPong_[2];
     // Surface (screen) dimensions, needed to reset the viewport for the present
     // pass after an offscreen pass changed it.
     int surfaceW_ = 0;

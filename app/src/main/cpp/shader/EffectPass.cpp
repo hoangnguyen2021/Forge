@@ -48,7 +48,7 @@ bool EffectPass::init(const FullScreenQuad* quad, std::string_view fragmentSrc) 
     return true;
 }
 
-void EffectPass::setResolution(int width, int height) {
+void EffectPass::onViewport(int width, int height) {
     // One texel measured in UV space: stepping vTexCoord by this amount lands
     // exactly on the next pixel, which is what a convolution kernel needs to read
     // its neighbours. Guard against a zero size before the surface is known.

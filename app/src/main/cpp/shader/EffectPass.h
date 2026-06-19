@@ -31,12 +31,12 @@ public:
     // pass. fragmentSrc is the GLSL fragment shader that defines the effect.
     bool init(const FullScreenQuad* quad, std::string_view fragmentSrc);
 
-    // Resolution of the texture this pass samples, used to derive uTexelSize. Call
-    // whenever the target size changes.
-    void setResolution(int width, int height);
-
     // Sample inputTexture (a GL_TEXTURE_2D) into the currently bound framebuffer.
     void draw(GLuint inputTexture) const override;
+
+    // Resolution of the texture this pass samples, used to derive uTexelSize.
+    // Overrides RenderPass so the engine drives it uniformly through the chain.
+    void onViewport(int width, int height) override;
 
     void destroy();
 
