@@ -69,33 +69,37 @@ bool RenderEngine::surfaceCreated(ANativeWindow* window) {
     return true;
 }
 
-// Creates the OES texture the camera writes frames into and returns its id so the
-// caller can wrap it in a SurfaceTexture. Only the camera *input* — the render
-// graph that samples it is built separately in initPipeline(). Returns the id, or
-// 0 (GL's reserved invalid-texture sentinel) if the context isn't current.
+// Creates the GL texture the camera writes its frames into and returns its id so
+// the Kotlin side can wrap it in a SurfaceTexture. This is only the camera *input*;
+// the render graph that samples it is built separately in initPipeline(). Returns
+// the id, or 0 (GL's reserved invalid-texture sentinel) if the context isn't current.
+//
+// Canonical home for GL textures and their sampling parameters — other passes and
+// FrameBuffer reuse these ideas and point back here.
 GLuint RenderEngine::createOesTexture() {
-    // glGenTextures reserves an id in the driver. The texture object itself
-    // is not allocated until the first glBindTexture call below.
+    // A GL "texture" is just image memory on the GPU that a shader can read; this one
+    // holds the live camera frame. glGenTextures reserves an id, but the object isn't
+    // actually allocated until the first glBindTexture below.
     glGenTextures(1, &oesTexId_);
 
-    // GL_TEXTURE_EXTERNAL_OES is a special texture target that accepts camera
-    // and video buffers directly. The driver handles YUV→RGB conversion when
-    // sampled — regular sampler2D textures can't do this.
+    // Binding makes this the texture that the following texture calls configure. The
+    // target GL_TEXTURE_EXTERNAL_OES is Android-specific: it accepts the camera's
+    // native buffer directly and converts YUV->RGB when sampled, which a normal
+    // sampler2D cannot do (the camera delivers YUV; shaders want RGB).
     glBindTexture(GL_TEXTURE_EXTERNAL_OES, oesTexId_);
-    // MIN_FILTER: GL_LINEAR blends the 4 nearest texels when the texture is shrunk.
-    // MAG_FILTER: GL_LINEAR blends when the texture is stretched, avoiding blockiness.
-    // GL_LINEAR: the correct ceiling hereOES textures don't support mipmaps, so any
-    // GL_LINEAR_MIPMAP_* variant would silently produce a black texture.
+    // Filtering controls how the texture is sampled when it doesn't map 1:1 to screen
+    // pixels. GL_LINEAR blends the nearest texels — MIN when the image is shrunk, MAG
+    // when it's stretched — which is smoother than the blocky GL_NEAREST. OES textures
+    // can't have mipmaps, so the GL_LINEAR_MIPMAP_* variants aren't an option here.
     glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    // WRAP_S/T (S = horizontal axis, T = vertical axis) control what the GPU samples when a UV
-    // coordinate falls outside [0,1].
-    // CLAMP_TO_EDGE: pins out-of-range UVs to the nearest edge pixel — any floating-point rounding
-    // past 1.0 gets the border pixel rather than wrapping to the opposite edge, which would bleed
-    // the wrong side of the frame.
+    // Wrapping controls what's sampled when a UV coordinate falls outside [0,1]
+    // (S = horizontal axis, T = vertical). GL_CLAMP_TO_EDGE pins it to the nearest
+    // edge texel, so float rounding past 1.0 reads the border rather than wrapping
+    // around and bleeding in the opposite edge of the frame.
     glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    // Unbind so subsequent unrelated GL calls don't accidentally mutate this texture.
+    // Unbind so later, unrelated texture calls don't accidentally reconfigure this one.
     glBindTexture(GL_TEXTURE_EXTERNAL_OES, 0);
 
     CHECK_GL("RenderEngine::createOesTexture");

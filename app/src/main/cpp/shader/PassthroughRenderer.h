@@ -6,6 +6,16 @@ namespace forge {
 
 class FullScreenQuad;
 
+/*
+ * The head pass of the render graph: samples the camera's OES texture, applies the
+ * per-frame SurfaceTexture transform (sensor orientation + HAL crop) and a
+ * cover-style crop, and renders the upright, surface-filling frame into the first
+ * offscreen target. See RenderEngine for the full pipeline.
+ *
+ * It is not a RenderPass: its input is an external OES texture plus a transform
+ * matrix, not a plain 2D texture, so it sits at the head of the chain rather than
+ * in the uniform effect list.
+ */
 class PassthroughRenderer {
 public:
     PassthroughRenderer() = default;

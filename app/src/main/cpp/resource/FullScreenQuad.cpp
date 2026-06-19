@@ -80,7 +80,7 @@ void FullScreenQuad::draw() const {
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
     // --- Cleanup ---
-    // Disable the attribute slots and unbinding the buffer.
+    // Disable the attribute slots and unbind the buffer.
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
     glBindBuffer(GL_ARRAY_BUFFER, 0);

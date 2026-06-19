@@ -7,6 +7,13 @@
 
 namespace forge {
 
+/*
+ * Owns the EGL objects that connect OpenGL ES to one Android window: the display
+ * (GPU connection), the context (all GL state), and the window surface (the
+ * on-screen canvas). EGL is the glue between Android's window system and GL; init()
+ * documents each step. A context is thread-local, so this must be created and used
+ * on the GL thread. One per RenderEngine.
+ */
 class EglContext {
 public:
     EglContext() = default;

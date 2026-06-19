@@ -59,8 +59,9 @@ void EffectPass::onViewport(int width, int height) {
 void EffectPass::draw(GLuint inputTexture) const {
     glUseProgram(program_);
 
-    // Bind the input (the previous stage's output) to unit 0 and point the sampler
-    // at that unit.
+    // Bind the input (the previous stage's output) to texture unit 0 and point the
+    // sampler at it — the standard 3-step bind (see PassthroughRenderer::draw). This
+    // input is a plain 2D texture, not OES, so the target is GL_TEXTURE_2D.
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, inputTexture);
     glUniform1i(uTexture_, 0);

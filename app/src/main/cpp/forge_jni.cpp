@@ -8,8 +8,16 @@
 
 using forge::RenderEngine;
 
-// Round-trip a jlong through the RenderEngine pointer. The Kotlin side treats
-// the handle as opaque; only this file dereferences it.
+/*
+ * JNI bridge between the Kotlin RenderEngine wrapper and the C++ RenderEngine. Each
+ * native* function here backs one `external fun` on the Kotlin side. The engine is
+ * held as an opaque jlong handle (a raw RenderEngine* round-tripped through a long),
+ * created by nativeCreate and freed by nativeDestroy. Every call must arrive on the
+ * GL thread — see RenderEngine for the lifecycle and call ordering.
+ */
+
+// Round-trip a jlong back into the RenderEngine pointer. The Kotlin side treats the
+// handle as opaque; only this file dereferences it.
 static RenderEngine *asRenderEngine(jlong handle) {
     return reinterpret_cast<RenderEngine *>(handle);
 }

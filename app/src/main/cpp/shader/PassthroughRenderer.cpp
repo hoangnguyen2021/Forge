@@ -12,116 +12,89 @@
 
 namespace forge {
 
-// Vertex shader: runs once per corner of the quad.
-// Its only job is to pass the screen position straight through and
-// compute the texture coordinate that the fragment shader will sample.
+// Vertex shader: runs once per quad corner. It places the corner on screen and
+// computes the UV the fragment shader will sample the camera image at.
 static constexpr std::string_view kVertSrc = R"GLSL(
     #version 300 es
 
-    // --- Attributes: per-vertex inputs from CPU memory, different value for each of the 4 corners.
-    // layout(location = N) pins each to a slot number, must match the slot number passed to
-    // glVertexAttribPointer in draw().
-    // NDC screen coordinate of this corner: where to draw on screen (-1..1)
-    layout(location = 0) in vec2 aPosition;
-    // UV coordinate into the camera image: where to sample the camera image (0..1)
-    layout(location = 1) in vec2 aTexCoord;
+    // --- Attributes: per-vertex inputs, one value per corner. The location slots
+    // must match what FullScreenQuad::draw feeds them (see FullScreenQuad for the
+    // attribute layout and what NDC/UV mean).
+    layout(location = 0) in vec2 aPosition;  // NDC corner position, -1..1
+    layout(location = 1) in vec2 aTexCoord;  // UV into the camera image, 0..1
 
-    // --- Uniforms: constant across all 4 vertices.
-    uniform mat4 uTexMatrix;   // encodes whatever rotation/flip the camera hardware applied to the buffer
-    uniform vec2 uCropScale;   // shrinks UVs so only the center region of the camera image is used
-    uniform vec2 uCropOffset;  // shifts the shrunk UV window to re-center it
+    // --- Uniforms: shader inputs constant across all 4 corners of this draw.
+    uniform mat4 uTexMatrix;   // SurfaceTexture's transform: sensor orientation + HAL crop
+    uniform vec2 uCropScale;   // shrinks UVs so only the center region is sampled (cover-crop)
+    uniform vec2 uCropOffset;  // re-centers that shrunk UV window
 
-    // --- Varying: output to the fragment shader.
-    // The GPU interpolates this across every pixel inside the triangle using barycentric coordinates —
-    // each pixel gets a weight (α, β, γ) for each corner that sums to 1.0, and its vTexCoord is
-    // α*A + β*B + γ*C. A pixel at corner A gets exactly A's value; a pixel dead center gets the
-    // average. This happens automatically in the rasterizer, with no extra code needed.
+    // --- Varying: a value written per-corner that the GPU smoothly interpolates
+    // across every pixel of the triangle, so each fragment receives a blended UV.
+    // The rasterizer does this automatically.
     out vec2 vTexCoord;
 
     void main() {
-        // required output: where this vertex lands on screen.
-        // aPosition is already in NDC so no transformation is needed — pass it straight through.
-        // vec4(aPosition, 0.0, 1.0) expands vec2 → vec4: z=0 (no depth), w=1 (required for a point).
+        // aPosition is already in NDC, so pass it straight through. z=0, w=1 expand
+        // the vec2 into the vec4 that gl_Position requires.
         gl_Position = vec4(aPosition, 0.0, 1.0);
 
-        // Step 1 — crop: shrink the 0..1 UV range down to the center sub-region of the camera image.
-        // uCropScale/uCropOffset must be applied before uTexMatrix because the crop
-        // lives in the pre-rotation UV space that SurfaceTexture's transform expects.
+        // Crop first: shrink the 0..1 UV range to the centered sub-region we keep
+        // (see setViewport for how the crop is derived). This must run before
+        // uTexMatrix, which expects coordinates in the pre-transform UV space.
         vec2 uv = aTexCoord * uCropScale + uCropOffset;
 
-        // Step 2 — rotate/flip: apply SurfaceTexture's matrix to handle device orientation.
-        // uv must be promoted to vec4 (w=1) for the mat4 multiply, then we extract .xy back out.
+        // Then apply SurfaceTexture's transform. The vec4 promotion is just so the
+        // mat4 multiply works; we take .xy back out.
         vTexCoord = (uTexMatrix * vec4(uv, 0.0, 1.0)).xy;
     }
 )GLSL";
 
-// Fragment shader: runs once per pixel covered by the quad.
-// Receives the interpolated vTexCoord from the vertex shader and samples the camera texture.
-// The result is written to fragColor, which the GPU writes to the framebuffer for that pixel.
+// Fragment shader: runs once per pixel, samples the camera texture at the
+// interpolated UV, and writes the color to the framebuffer.
 static constexpr std::string_view kFragSrc = R"GLSL(
     #version 300 es
 
-    // GL_OES_EGL_image_external_essl3 must be explicitly enabled to use samplerExternalOES.
+    // Required to use samplerExternalOES (the sampler type for an OES texture).
     #extension GL_OES_EGL_image_external_essl3 : require
 
-    // Declares the default float precision for this shader.
-    // mediump (medium precision) is the standard choice for fragment shaders on mobile —
-    // high enough for color math, low enough to run fast on mobile GPUs.
+    // mediump = medium float precision, the usual mobile default for color math.
     precision mediump float;
 
-    // --- Varying input: interpolated value passed in from the vertex shader, one per pixel.
-    in vec2 vTexCoord;  // UV coordinate computed per-corner in kVertSrc, interpolated across the triangle
+    in vec2 vTexCoord;
 
-    // --- Uniform: the camera texture, constant for the entire draw call.
-    // samplerExternalOES is a special sampler for OES textures (fed by Android's SurfaceTexture).
-    // Unlike a regular sampler2D, it lets the driver handle YUV→RGB conversion internally —
-    // camera hardware produces YUV buffers, but shaders expect RGB, so the driver bridges the gap.
+    // The camera's OES texture (see RenderEngine::createOesTexture). samplerExternalOES
+    // is the OES counterpart to sampler2D — the driver does YUV->RGB on sample.
     uniform samplerExternalOES uTexture;
 
-    // --- Output: the final RGBA color written to the framebuffer for this pixel.
     out vec4 fragColor;
 
     void main() {
-        // Sample the camera texture at the UV coordinate this pixel received from the vertex shader.
-        // texture() returns a vec4 (RGBA). Since the camera image is opaque, alpha will always be 1.
+        // texture() returns RGBA. The camera image is opaque, so alpha is always 1.
         fragColor = texture(uTexture, vTexCoord);
     }
 )GLSL";
 
 bool PassthroughRenderer::init(GLuint oesTextureId, const FullScreenQuad* quad) {
-    // Save the OES texture ID created by SurfaceTexture on the Java side.
-    // We don't own this texture — SurfaceTexture manages its lifetime — we just sample from it each
-    // frame.
+    // We sample these but don't own them: the OES texture and quad are created and
+    // freed by RenderEngine. We only keep handles to them.
     oesTexId_ = oesTextureId;
-
-    // Cache the shared quad. It is owned by RenderEngine and reused by every pass;
-    // we only sample it in draw() and never free it here.
     quad_ = quad;
 
-    // Step 1: compile each GLSL source string into a GPU shader object.
-    // compileShader sends the source to the GPU driver, which compiles it to GPU machine code —
-    // just like clang compiling a .cpp file. Returns 0 on failure (compile error logged inside).
+    // Compile + link the shaders into a GPU program (see ShaderProgram for what
+    // compile and link mean). Either source failing aborts init.
     GLuint vert = compileShader(GL_VERTEX_SHADER, kVertSrc);
     GLuint frag = compileShader(GL_FRAGMENT_SHADER, kFragSrc);
     if (vert == 0 || frag == 0) {
         return false;
     }
-
-    // Step 2: link the two compiled shader objects into one GPU program.
-    // Linking resolves the interface between vertex outputs (vTexCoord) and fragment inputs,
-    // validates that types match, and produces a single executable the GPU can run.
-    // The analogy: compile .cpp → .o files, then link the .o files into a binary.
-    // After linking, vert and frag are intermediate artifacts (like .o files) and are deleted
-    // inside linkProgram.
     program_ = linkProgram(vert, frag);
     if (program_ == 0) {
         return false;
     }
 
-    // Step 3: look up the integer slot for each uniform variable in the linked program.
-    // Uniforms are declared by name in GLSL, but the GPU assigns each an integer slot at link time.
-    // glGetUniformLocation queries that slot — caching it here avoids a name lookup every frame in
-    // draw().
+    // A "uniform" is a shader input constant across one draw call (unlike per-vertex
+    // attributes). The GPU assigns each an integer slot at link time; we cache the
+    // slots here so draw() doesn't look them up by name every frame.
     uTexMatrix_  = glGetUniformLocation(program_, "uTexMatrix");
     uTexture_    = glGetUniformLocation(program_, "uTexture");
     uCropScale_  = glGetUniformLocation(program_, "uCropScale");
@@ -132,34 +105,32 @@ bool PassthroughRenderer::init(GLuint oesTextureId, const FullScreenQuad* quad) 
     return true;
 }
 
-// Computes the UV crop that makes the camera image fill the surface without letterboxing.
-// Strategy: scale the camera image up until its shorter side matches the surface, then
-// crop the overflow on the longer side — identical to CSS "background-size: cover".
-// Example: camera=1080x1920 (portrait), surface=1080x1080 (square):
-//   scaleW=1.0, scaleH=0.5625 → renderScale=1.0 → cropScaleY=0.5625, cropOffsetY=0.219
-//   → only the center 56.25% of the camera height is shown, equal amounts cropped top and bottom.
-// The resulting cropScale/cropOffset are uploaded as uniforms to the vertex shader each draw call.
+// Computes the UV crop that makes the camera image fill the surface without
+// letterboxing — the same idea as CSS "background-size: cover": scale the image up
+// until its shorter side matches the surface, then crop the overflow on the longer
+// side. The resulting cropScale/cropOffset are uploaded as uniforms each draw call.
+//
+// Example: camera 1080x1920 (portrait) into a 1080x1080 (square) surface:
+//   scaleW=1.0, scaleH=0.5625 -> renderScale=1.0 -> cropScaleY=0.5625, cropOffsetY=0.219
+//   -> only the center 56.25% of the camera height shows, cropped equally top and bottom.
 void PassthroughRenderer::setViewport(int camW, int camH, int surfW, int surfH) {
-    // How much would we need to scale the camera image to fill the surface in each axis
-    // independently?
+    // Scale needed to fill the surface along each axis independently.
     float scaleW = static_cast<float>(surfW) / static_cast<float>(camW);
     float scaleH = static_cast<float>(surfH) / static_cast<float>(camH);
 
-    // Pick the larger scale — the one that fills the surface completely with no letterbox.
-    // The other axis will overflow and get cropped rather than leaving empty bars.
+    // The larger scale fills the surface completely; the other axis overflows and
+    // gets cropped, which is what avoids letterbox bars.
     float renderScale = std::max(scaleW, scaleH);
 
-    // cropScale is the fraction of the camera's UV range (0..1) we actually sample per axis.
-    // Dividing by renderScale normalizes so the filling axis gets 1.0 and the cropped axis gets
-    // < 1.0. In the vertex shader: uv = aTexCoord * uCropScale shrinks the 0..1 UV range to this
-    // fraction.
+    // cropScale = the fraction of the camera's 0..1 UV range we actually sample on
+    // each axis. Normalizing by renderScale gives 1.0 on the filling axis and < 1.0
+    // on the cropped one. The vertex shader applies it as uv *= uCropScale.
     cropScaleX_ = scaleW / renderScale;
     cropScaleY_ = scaleH / renderScale;
 
-    // Without an offset, the shrunken UV window would start at 0 and sample only one edge of the
-    // image. Adding half the unused portion as an offset re-centers the window so equal amounts are
-    // cropped on both sides. e.g. cropScaleY=0.5625 → offset=(1-0.5625)*0.5=0.219 → samples
-    // v=0.219..0.781.
+    // Offset re-centers the shrunk UV window; without it we'd sample from one edge.
+    // Half the unused range on each side crops equally. e.g. cropScaleY=0.5625 ->
+    // offset=(1-0.5625)*0.5=0.219 -> samples v in 0.219..0.781.
     cropOffsetX_ = (1.0f - cropScaleX_) * 0.5f;
     cropOffsetY_ = (1.0f - cropScaleY_) * 0.5f;
 
@@ -167,53 +138,37 @@ void PassthroughRenderer::setViewport(int camW, int camH, int surfW, int surfH) 
          cropScaleX_, cropScaleY_);
 }
 
-// Issues one full-screen draw call that samples the camera texture onto the quad.
-// texMatrix4x4 comes from SurfaceTexture.getTransformMatrix() — it encodes any rotation
-// or flip the camera hardware applied to the buffer, and must be re-fetched each frame.
+// Issues one full-screen draw that samples the camera texture onto the quad.
+// texMatrix4x4 is SurfaceTexture.getTransformMatrix() and changes every frame, so
+// it's re-fetched and re-uploaded each call.
 void PassthroughRenderer::draw(const float* texMatrix4x4) const {
-    // Make our shader program active. OpenGL is a global state machine — this single call means
-    // every subsequent GL operation and draw call uses our vertex + fragment shaders.
+    // OpenGL is a global state machine: this makes our program the one every
+    // following GL call and the draw use.
     glUseProgram(program_);
 
-    // --- Texture binding (3 steps) ---
-    // The GPU has multiple texture units (input ports), numbered 0, 1, 2...
-    // You bind a texture to a unit, then point the sampler uniform at that unit number.
-    // Step 1: select unit 0 as the active slot for the next bind call.
-    glActiveTexture(GL_TEXTURE0);
-    // Step 2: plug our OES camera texture into the currently active unit (unit 0).
-    glBindTexture(GL_TEXTURE_EXTERNAL_OES, oesTexId_);
-    // Step 3: tell the samplerExternalOES uniform in the fragment shader to read from unit 0.
-    // The sampler doesn't hold the texture itself — it holds the unit number to sample from.
-    glUniform1i(uTexture_, 0);
+    // Binding a texture for sampling is three steps. The GPU has numbered texture
+    // units (input slots); you attach a texture to a unit, then point the sampler
+    // uniform at that unit number. (The other passes reuse this same pattern.)
+    glActiveTexture(GL_TEXTURE0);                          // 1. select unit 0
+    glBindTexture(GL_TEXTURE_EXTERNAL_OES, oesTexId_);     // 2. attach our OES texture to it
+    glUniform1i(uTexture_, 0);                             // 3. tell the sampler to read unit 0
 
-    // --- Uniform uploads ---
-    // Push per-frame CPU values into the shader using the slot IDs cached in init().
-    // texMatrix4x4 changes every frame as SurfaceTexture delivers a new camera buffer.
-    // '1' = uploading one matrix, GL_FALSE = not transposed.
+    // Upload the per-frame uniforms (slots cached in init). The matrix changes every
+    // frame; the crop only changes on setViewport. "1" = one matrix, GL_FALSE = not transposed.
     glUniformMatrix4fv(uTexMatrix_, 1, GL_FALSE, texMatrix4x4);
-    // cropScale/cropOffset are stable until setViewport() is called again (e.g. a
-    // surface resize from split-screen or a foldable; the preview is portrait-locked).
     glUniform2f(uCropScale_, cropScaleX_, cropScaleY_);
     glUniform2f(uCropOffset_, cropOffsetX_, cropOffsetY_);
 
-    // --- Geometry + draw call ---
-    // The shared full-screen quad binds its VBO, describes the vertex attributes,
-    // and issues the GL_TRIANGLE_STRIP draw that covers every pixel of the target.
+    // Draw the shared quad (binds its VBO and issues the triangle-strip draw that
+    // covers every pixel of the target).
     quad_->draw();
 
     CHECK_GL("PassthroughRenderer::draw");
 }
 
-// Releases GPU resources allocated by this renderer in init().
-// Only frees what we own — the OES texture is not deleted here (RenderEngine
-// created it and frees it in surfaceDestroyed) and the quad is not deleted here
-// (RenderEngine owns it and shares it across passes). Only the shader program is
-// ours.
+// Frees only what this pass owns: the shader program. The OES texture and quad
+// belong to RenderEngine and are freed there.
 void PassthroughRenderer::destroy() {
-    // Free the linked shader program — this releases the compiled vertex + fragment shaders
-    // that the GPU driver allocated when we called linkProgram() in init().
-    // The individual shader objects (vert, frag) were already deleted inside linkProgram()
-    // after linking, so only the program handle remains to clean up here.
     if (program_ != 0) {
         glDeleteProgram(program_);
         program_ = 0;
