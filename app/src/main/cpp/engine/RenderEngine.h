@@ -71,7 +71,7 @@ public:
 private:
     std::unique_ptr<EglContext> egl_;
     // The camera's GL texture id (see createOesTexture for what "OES" means).
-    GLuint oesTexId_ = 0;
+    GLuint oesTextureId_ = 0;
     // Shared full-screen geometry, created in initPipeline and handed to every
     // pass. Held here (not inside a pass) so a single VBO is reused across passes
     // and freed once, on the GL thread, in surfaceDestroyed.

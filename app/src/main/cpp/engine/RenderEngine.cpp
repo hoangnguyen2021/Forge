@@ -80,13 +80,13 @@ GLuint RenderEngine::createOesTexture() {
     // A GL "texture" is just image memory on the GPU that a shader can read; this one
     // holds the live camera frame. glGenTextures reserves an id, but the object isn't
     // actually allocated until the first glBindTexture below.
-    glGenTextures(1, &oesTexId_);
+    glGenTextures(1, &oesTextureId_);
 
     // Binding makes this the texture that the following texture calls configure. The
     // target GL_TEXTURE_EXTERNAL_OES is Android-specific: it accepts the camera's
     // native buffer directly and converts YUV->RGB when sampled, which a normal
     // sampler2D cannot do (the camera delivers YUV; shaders want RGB).
-    glBindTexture(GL_TEXTURE_EXTERNAL_OES, oesTexId_);
+    glBindTexture(GL_TEXTURE_EXTERNAL_OES, oesTextureId_);
     // Filtering controls how the texture is sampled when it doesn't map 1:1 to screen
     // pixels. GL_LINEAR blends the nearest texels — MIN when the image is shrunk, MAG
     // when it's stretched — which is smoother than the blocky GL_NEAREST. OES textures
@@ -103,7 +103,7 @@ GLuint RenderEngine::createOesTexture() {
     glBindTexture(GL_TEXTURE_EXTERNAL_OES, 0);
 
     CHECK_GL("RenderEngine::createOesTexture");
-    return oesTexId_;
+    return oesTextureId_;
 }
 
 // Builds the render graph that turns camera frames into screen pixels: the shared
@@ -125,7 +125,7 @@ bool RenderEngine::initPipeline() {
     // Head pass: samples the OES camera texture, applies texMatrix4x4 (sensor
     // orientation + HAL crop) and cover-crop, renders into the first ping-pong target.
     auto camera = std::make_unique<PassthroughRenderer>();
-    if (!camera->init(oesTexId_, quad.get())) {
+    if (!camera->init(oesTextureId_, quad.get())) {
         LOGE("PassthroughRenderer init failed");
         return false;
     }
@@ -250,8 +250,8 @@ void RenderEngine::surfaceDestroyed() {
     pingPong_[0].reset();
     pingPong_[1].reset();
     quad_.reset();
-    glDeleteTextures(1, &oesTexId_);
-    oesTexId_ = 0;
+    glDeleteTextures(1, &oesTextureId_);
+    oesTextureId_ = 0;
     egl_.reset();
 }
 

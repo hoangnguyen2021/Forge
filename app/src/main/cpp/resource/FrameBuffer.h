@@ -34,13 +34,13 @@ public:
     void bind() const;
 
     // The color texture other passes sample from.
-    GLuint textureId() const { return texture_; }
+    GLuint textureId() const { return textureId_; }
 
     void destroy();
 
 private:
     GLuint fbo_     = 0;
-    GLuint texture_ = 0;
+    GLuint textureId_ = 0;
     int width_      = 0;
     int height_     = 0;
 };

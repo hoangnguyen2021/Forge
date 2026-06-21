@@ -37,7 +37,7 @@ public:
 private:
     const FullScreenQuad* quad_ = nullptr;
     GLuint program_             = 0;
-    GLuint oesTexId_            = 0;
+    GLuint oesTextureId_        = 0;
     GLint uTexMatrix_           = -1;
     GLint uTexture_             = -1;
     GLint uCropScale_           = -1;

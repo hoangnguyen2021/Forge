@@ -77,7 +77,7 @@ static constexpr std::string_view kFragSrc = R"GLSL(
 bool PassthroughRenderer::init(GLuint oesTextureId, const FullScreenQuad* quad) {
     // We sample these but don't own them: the OES texture and quad are created and
     // freed by RenderEngine. We only keep handles to them.
-    oesTexId_ = oesTextureId;
+    oesTextureId_ = oesTextureId;
     quad_ = quad;
 
     // Compile + link the shaders into a GPU program (see ShaderProgram for what
@@ -150,7 +150,7 @@ void PassthroughRenderer::draw(const float* texMatrix4x4) const {
     // units (input slots); you attach a texture to a unit, then point the sampler
     // uniform at that unit number. (The other passes reuse this same pattern.)
     glActiveTexture(GL_TEXTURE0);                          // 1. select unit 0
-    glBindTexture(GL_TEXTURE_EXTERNAL_OES, oesTexId_);     // 2. attach our OES texture to it
+    glBindTexture(GL_TEXTURE_EXTERNAL_OES, oesTextureId_);     // 2. attach our OES texture to it
     glUniform1i(uTexture_, 0);                             // 3. tell the sampler to read unit 0
 
     // Upload the per-frame uniforms (slots cached in init). The matrix changes every

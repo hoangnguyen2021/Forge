@@ -20,8 +20,8 @@ bool FrameBuffer::ensureSize(int w, int h) {
     // The color texture that passes render into and later passes sample from. Created
     // like any GL texture; see RenderEngine::createOesTexture for the filter/wrap
     // parameters below — identical reasoning, just a plain 2D target instead of OES.
-    glGenTextures(1, &texture_);
-    glBindTexture(GL_TEXTURE_2D, texture_);
+    glGenTextures(1, &textureId_);
+    glBindTexture(GL_TEXTURE_2D, textureId_);
     // glTexImage2D allocates the storage. Internal format GL_RGBA8 = how the GPU
     // stores each texel (8 bits/channel); GL_RGBA + GL_UNSIGNED_BYTE describe the
     // upload format. nullptr = allocate but leave the contents undefined; a pass fills it.
@@ -34,10 +34,10 @@ bool FrameBuffer::ensureSize(int w, int h) {
 
     // Create the FBO (the off-screen render target, see the header) and wire our
     // texture in as its color output: fragment-shader writes to layout(location = 0)
-    // now land in texture_ instead of the screen. The last arg is mip level 0.
+    // now land in textureId_ instead of the screen. The last arg is mip level 0.
     glGenFramebuffers(1, &fbo_);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture_, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureId_, 0);
 
     // An FBO can be "incomplete" (an unsupported size/format combination); rendering
     // to an incomplete FBO is undefined, so verify before trusting it.
@@ -67,9 +67,9 @@ void FrameBuffer::destroy() {
         glDeleteFramebuffers(1, &fbo_);
         fbo_ = 0;
     }
-    if (texture_ != 0) {
-        glDeleteTextures(1, &texture_);
-        texture_ = 0;
+    if (textureId_ != 0) {
+        glDeleteTextures(1, &textureId_);
+        textureId_ = 0;
     }
     width_  = 0;
     height_ = 0;
