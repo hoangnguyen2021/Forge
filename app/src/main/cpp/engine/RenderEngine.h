@@ -1,10 +1,10 @@
 #pragma once
 
 #include "../egl/EglContext.h"
-#include "../resource/FrameBuffer.h"
-#include "../resource/FullScreenQuad.h"
-#include "../shader/CameraPass.h"
-#include "../shader/RenderPass.h"
+#include "../resources/FrameBuffer.h"
+#include "../resources/FullScreenQuad.h"
+#include "../passes/CameraPass.h"
+#include "../passes/RenderPass.h"
 
 #include <GLES3/gl3.h>
 #include <android/native_window.h>

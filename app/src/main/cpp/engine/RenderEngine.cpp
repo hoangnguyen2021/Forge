@@ -1,8 +1,8 @@
 #include "RenderEngine.h"
 
 #include "../CheckGl.h"
-#include "../shader/EffectPass.h"
-#include "../shader/PresentPass.h"
+#include "../passes/EffectPass.h"
+#include "../passes/PresentPass.h"
 
 #include <GLES2/gl2ext.h>
 #include <string_view>

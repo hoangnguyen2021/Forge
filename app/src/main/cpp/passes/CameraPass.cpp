@@ -1,7 +1,7 @@
 #include "CameraPass.h"
 
 #include "../CheckGl.h"
-#include "../resource/FullScreenQuad.h"
+#include "../resources/FullScreenQuad.h"
 #include "ShaderProgram.h"
 
 #include <GLES2/gl2ext.h>

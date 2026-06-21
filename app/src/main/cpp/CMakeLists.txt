@@ -13,12 +13,12 @@ add_library(forge_engine SHARED
     forge_jni.cpp
     egl/EglContext.cpp
     engine/RenderEngine.cpp
-    resource/FrameBuffer.cpp
-    resource/FullScreenQuad.cpp
-    shader/ShaderProgram.cpp
-    shader/CameraPass.cpp
-    shader/PresentPass.cpp
-    shader/EffectPass.cpp
+    resources/FrameBuffer.cpp
+    resources/FullScreenQuad.cpp
+    passes/ShaderProgram.cpp
+    passes/CameraPass.cpp
+    passes/PresentPass.cpp
+    passes/EffectPass.cpp
 )
 
 target_compile_features(forge_engine PRIVATE cxx_std_17)

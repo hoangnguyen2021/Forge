@@ -1,7 +1,7 @@
 #include "PresentPass.h"
 
 #include "../CheckGl.h"
-#include "../resource/FullScreenQuad.h"
+#include "../resources/FullScreenQuad.h"
 #include "ShaderProgram.h"
 
 #include <string_view>
