@@ -25,7 +25,7 @@ public:
     CameraPass& operator=(const CameraPass&) = delete;
 
     // quad is owned by the caller (RenderEngine) and shared across passes; it
-    // must outlive this renderer and stay valid for every draw() call.
+    // must outlive this pass and stay valid for every draw() call.
     bool init(GLuint oesTextureId, const FullScreenQuad* quad);
 
     void setViewport(int cameraPortraitW, int cameraPortraitH, int surfaceW, int surfaceH);

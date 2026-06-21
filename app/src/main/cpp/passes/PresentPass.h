@@ -13,7 +13,6 @@ class FullScreenQuad;
  * draws it to the currently bound framebuffer — normally the default framebuffer
  * (the screen). Straight 0..1 UVs with no crop or orientation, because the camera
  * pass already baked those in when it rendered into the offscreen target.
- *
  */
 class PresentPass : public RenderPass {
 public:
@@ -24,7 +23,7 @@ public:
     // this pass and stay valid for every draw() call.
     bool init(const FullScreenQuad* quad);
 
-    // Draw inputTexture (a GL_TEXTURE_2D) over the currently bound framebuffer.
+    // Sample inputTexture (a GL_TEXTURE_2D) into the currently bound framebuffer.
     void draw(GLuint inputTexture) const override;
 
     void destroy();

@@ -1,8 +1,8 @@
 #include "CameraPass.h"
 
 #include "../gl/CheckGl.h"
-#include "../resources/FullScreenQuad.h"
 #include "../gl/ShaderProgram.h"
+#include "../resources/FullScreenQuad.h"
 
 #include <GLES2/gl2ext.h>
 #include <algorithm>
@@ -148,9 +148,9 @@ void CameraPass::draw(const float* texMatrix4x4) const {
     // Binding a texture for sampling is three steps. The GPU has numbered texture
     // units (input slots); you attach a texture to a unit, then point the sampler
     // uniform at that unit number. (The other passes reuse this same pattern.)
-    glActiveTexture(GL_TEXTURE0);                          // 1. select unit 0
-    glBindTexture(GL_TEXTURE_EXTERNAL_OES, oesTextureId_);     // 2. attach our OES texture to it
-    glUniform1i(uTexture_, 0);                             // 3. tell the sampler to read unit 0
+    glActiveTexture(GL_TEXTURE0);                           // 1. select unit 0
+    glBindTexture(GL_TEXTURE_EXTERNAL_OES, oesTextureId_);  // 2. attach our OES texture to it
+    glUniform1i(uTexture_, 0);                              // 3. tell the sampler to read unit 0
 
     // Upload the per-frame uniforms (slots cached in init). The matrix changes every
     // frame; the crop only changes on setViewport. "1" = one matrix, GL_FALSE = not transposed.
