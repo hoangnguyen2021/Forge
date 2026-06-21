@@ -5,6 +5,7 @@
 #include "../passes/PresentPass.h"
 
 #include <GLES2/gl2ext.h>
+#include <initializer_list>
 #include <string_view>
 #include <utility>
 
@@ -13,44 +14,65 @@
 
 namespace forge {
 
-// First effect occupying the slot between the camera pass and present: a 3x3 Sobel
-// edge detector. For each pixel it reads the 8 neighbours (stepping by uTexelSize),
-// approximates the luminance gradient with the horizontal/vertical Sobel kernels,
-// and outputs the gradient magnitude as white-on-black edges. Chosen as the first
-// effect because the result is unmistakable — direct proof the pass is wired into
-// the chain — and the neighbour-sampling machinery (uTexelSize, the 3x3 tap
-// pattern) is exactly what a Gaussian blur and segmentation-mask feathering reuse.
-static constexpr std::string_view kSobelFragSrc = R"GLSL(
+// First effect in the chain: a separable Gaussian blur, split into a horizontal pass
+// (this shader) and a vertical pass (kBlurVFragSrc). Blurring along one axis and then
+// the other is mathematically identical to a single 2D Gaussian, but costs 2*N texture
+// taps per pixel instead of N*N — the standard separable-convolution optimization, and
+// the reason the engine runs two passes instead of one.
+//
+// Each pass reads 9 taps (the centre plus four neighbours on each side) along its axis,
+// weighting them by a fixed Gaussian kernel (kWeight, summing to 1 so the image keeps
+// its overall brightness). uTexelSize turns a "one pixel" step into UV space; this
+// shader walks along x (uTexelSize.x), the vertical pass along y.
+static constexpr std::string_view kBlurHFragSrc = R"GLSL(
     #version 300 es
     precision mediump float;     // medium float precision, the usual mobile default for color math
     in vec2 vTexCoord;           // interpolated UV from the vertex shader, 0..1
-    uniform sampler2D uTexture;  // the input image to detect edges in (previous pass's output)
+    uniform sampler2D uTexture;  // the input image to blur (previous pass's output)
     uniform vec2 uTexelSize;     // size of one texel in UV space (1/width, 1/height)
-    out vec4 fragColor;          // the edge color written for this pixel
+    out vec4 fragColor;          // the blurred color written for this pixel
 
-    // Perceptual luminance of the pixel at uv (Rec. 601 weights).
-    float luma(vec2 uv) {
-        vec3 c = texture(uTexture, uv).rgb;
-        return dot(c, vec3(0.299, 0.587, 0.114));
-    }
+    // Gaussian weights for the centre tap and the four neighbours on each side. The
+    // kernel is symmetric, so one array serves both sides; the weights sum to 1.0
+    // (centre + 2 * the other four) to preserve overall brightness.
+    const float kWeight[5] = float[](0.2270270270, 0.1945945946, 0.1216216216,
+                                     0.0540540541, 0.0162162162);
 
     void main() {
-        vec2 t = uTexelSize;
-        // Sample the 3x3 luminance neighbourhood around this pixel.
-        float tl = luma(vTexCoord + vec2(-t.x,  t.y));
-        float tc = luma(vTexCoord + vec2( 0.0,  t.y));
-        float tr = luma(vTexCoord + vec2( t.x,  t.y));
-        float ml = luma(vTexCoord + vec2(-t.x,  0.0));
-        float mr = luma(vTexCoord + vec2( t.x,  0.0));
-        float bl = luma(vTexCoord + vec2(-t.x, -t.y));
-        float bc = luma(vTexCoord + vec2( 0.0, -t.y));
-        float br = luma(vTexCoord + vec2( t.x, -t.y));
-        // Sobel gradient: horizontal (gx) and vertical (gy) convolution kernels.
-        float gx = -tl - 2.0 * ml - bl + tr + 2.0 * mr + br;
-        float gy =  tl + 2.0 * tc + tr - bl - 2.0 * bc - br;
-        // Gradient magnitude is the edge strength, drawn as white edges on black.
-        float edge = length(vec2(gx, gy));
-        fragColor = vec4(vec3(edge), 1.0);
+        // Centre tap first, then step outward along x, adding the mirrored pair of
+        // neighbours at each distance with the same weight.
+        vec3 acc = texture(uTexture, vTexCoord).rgb * kWeight[0];
+        for (int i = 1; i < 5; i++) {
+            vec2 off = vec2(float(i) * uTexelSize.x, 0.0);
+            acc += texture(uTexture, vTexCoord + off).rgb * kWeight[i];
+            acc += texture(uTexture, vTexCoord - off).rgb * kWeight[i];
+        }
+        fragColor = vec4(acc, 1.0);
+    }
+)GLSL";
+
+// Vertical half of the separable Gaussian (see kBlurHFragSrc for the technique and the
+// kernel). Identical to the horizontal pass except it steps along y, so it blurs the
+// already horizontally-blurred image into the final 2D result.
+static constexpr std::string_view kBlurVFragSrc = R"GLSL(
+    #version 300 es
+    precision mediump float;     // medium float precision, the usual mobile default for color math
+    in vec2 vTexCoord;           // interpolated UV from the vertex shader, 0..1
+    uniform sampler2D uTexture;  // the horizontally-blurred image (previous pass's output)
+    uniform vec2 uTexelSize;     // size of one texel in UV space (1/width, 1/height)
+    out vec4 fragColor;          // the blurred color written for this pixel
+
+    const float kWeight[5] = float[](0.2270270270, 0.1945945946, 0.1216216216,
+                                     0.0540540541, 0.0162162162);
+
+    void main() {
+        vec3 acc = texture(uTexture, vTexCoord).rgb * kWeight[0];
+        for (int i = 1; i < 5; i++) {
+            vec2 off = vec2(0.0, float(i) * uTexelSize.y);
+            acc += texture(uTexture, vTexCoord + off).rgb * kWeight[i];
+            acc += texture(uTexture, vTexCoord - off).rgb * kWeight[i];
+        }
+        fragColor = vec4(acc, 1.0);
     }
 )GLSL";
 
@@ -130,16 +152,19 @@ bool RenderEngine::initPipeline() {
         return false;
     }
 
-    // Effect chain. Each entry samples the previous stage's output; the fragment
-    // shader defines the look while EffectPass stays effect-agnostic. Append an
-    // effect here to extend the chain — nothing else in the engine changes.
+    // Effect chain: a separable Gaussian blur — a horizontal 1D pass followed by a
+    // vertical one (see kBlurHFragSrc). Each EffectPass is effect-agnostic; its
+    // fragment shader defines the look, so wiring a new effect is just another entry
+    // here — the draw loop ping-pongs them through the two targets automatically.
     std::vector<std::unique_ptr<RenderPass>> effects;
-    auto sobel = std::make_unique<EffectPass>();
-    if (!sobel->init(quad.get(), kSobelFragSrc)) {
-        LOGE("EffectPass init failed");
-        return false;
+    for (std::string_view fragSrc : {kBlurHFragSrc, kBlurVFragSrc}) {
+        auto effect = std::make_unique<EffectPass>();
+        if (!effect->init(quad.get(), fragSrc)) {
+            LOGE("EffectPass init failed");
+            return false;
+        }
+        effects.push_back(std::move(effect));
     }
-    effects.push_back(std::move(sobel));
 
     // Final pass: blits the chain's output to the window with straight UVs.
     auto present = std::make_unique<PresentPass>();
