@@ -20,7 +20,7 @@ static constexpr std::string_view kVertSrc = R"GLSL(
     // --- Attributes: per-vertex inputs, one value per corner. The location slots
     // must match what FullScreenQuad::draw feeds them (see FullScreenQuad for the
     // attribute layout and what NDC/UV mean).
-    layout(location = 0) in vec2 aPosition;  // NDC corner position, -1..1
+    layout(location = 0) in vec2 aPosition;  // a quad corner in NDC, -1..1
     layout(location = 1) in vec2 aTexCoord;  // UV into the camera image, 0..1
 
     // --- Uniforms: shader inputs constant across all 4 corners of this draw.
@@ -57,16 +57,15 @@ static constexpr std::string_view kFragSrc = R"GLSL(
     // Required to use samplerExternalOES (the sampler type for an OES texture).
     #extension GL_OES_EGL_image_external_essl3 : require
 
-    // mediump = medium float precision, the usual mobile default for color math.
-    precision mediump float;
+    precision mediump float;  // medium float precision, the usual mobile default for color math
 
-    in vec2 vTexCoord;
+    in vec2 vTexCoord;  // interpolated UV from the vertex shader: where to sample the camera
 
     // The camera's OES texture (see RenderEngine::createOesTexture). samplerExternalOES
     // is the OES counterpart to sampler2D — the driver does YUV->RGB on sample.
     uniform samplerExternalOES uTexture;
 
-    out vec4 fragColor;
+    out vec4 fragColor;  // the RGBA color written for this pixel
 
     void main() {
         // texture() returns RGBA. The camera image is opaque, so alpha is always 1.

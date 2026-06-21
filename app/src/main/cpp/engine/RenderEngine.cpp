@@ -22,11 +22,11 @@ namespace forge {
 // pattern) is exactly what a Gaussian blur and segmentation-mask feathering reuse.
 static constexpr std::string_view kSobelFragSrc = R"GLSL(
     #version 300 es
-    precision mediump float;
-    in vec2 vTexCoord;           // this pixel's position in the image, 0..1
+    precision mediump float;     // medium float precision, the usual mobile default for color math
+    in vec2 vTexCoord;           // interpolated UV from the vertex shader, 0..1
     uniform sampler2D uTexture;  // the input image to detect edges in (previous pass's output)
     uniform vec2 uTexelSize;     // size of one texel in UV space (1/width, 1/height)
-    out vec4 fragColor;          // the edge color this shader outputs for this pixel
+    out vec4 fragColor;          // the edge color written for this pixel
 
     // Perceptual luminance of the pixel at uv (Rec. 601 weights).
     float luma(vec2 uv) {

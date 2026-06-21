@@ -16,9 +16,9 @@ namespace forge {
 // cropped — so the texture coordinate is forwarded to the fragment shader as-is.
 static constexpr std::string_view kVertSrc = R"GLSL(
     #version 300 es
-    layout(location = 0) in vec2 aPosition;
-    layout(location = 1) in vec2 aTexCoord;
-    out vec2 vTexCoord;
+    layout(location = 0) in vec2 aPosition;  // a quad corner in NDC, -1..1
+    layout(location = 1) in vec2 aTexCoord;  // that corner's UV into the scene texture, 0..1
+    out vec2 vTexCoord;                      // UV forwarded to the fragment shader
     void main() {
         gl_Position = vec4(aPosition, 0.0, 1.0);
         vTexCoord = aTexCoord;
@@ -30,10 +30,10 @@ static constexpr std::string_view kVertSrc = R"GLSL(
 // earlier pass, not a camera buffer needing YUV conversion.
 static constexpr std::string_view kFragSrc = R"GLSL(
     #version 300 es
-    precision mediump float;
-    in vec2 vTexCoord;
-    uniform sampler2D uTexture;
-    out vec4 fragColor;
+    precision mediump float;     // medium float precision, the usual mobile default for color math
+    in vec2 vTexCoord;           // interpolated UV from the vertex shader, 0..1
+    uniform sampler2D uTexture;  // the scene texture to present (last pass's output)
+    out vec4 fragColor;          // the color written to the screen
     void main() {
         fragColor = texture(uTexture, vTexCoord);
     }
