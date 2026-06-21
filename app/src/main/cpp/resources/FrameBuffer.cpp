@@ -1,6 +1,6 @@
 #include "FrameBuffer.h"
 
-#include "../CheckGl.h"
+#include "../gl/CheckGl.h"
 
 #define LOG_TAG "FrameBuffer"
 #include "../Log.h"

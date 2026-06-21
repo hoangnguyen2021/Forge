@@ -1,6 +1,6 @@
 #include "RenderEngine.h"
 
-#include "../CheckGl.h"
+#include "../gl/CheckGl.h"
 #include "../passes/EffectPass.h"
 #include "../passes/PresentPass.h"
 

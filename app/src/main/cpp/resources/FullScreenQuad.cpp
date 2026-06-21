@@ -1,6 +1,6 @@
 #include "FullScreenQuad.h"
 
-#include "../CheckGl.h"
+#include "../gl/CheckGl.h"
 
 #include <array>
 #include <cstddef>

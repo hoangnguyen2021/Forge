@@ -15,7 +15,7 @@ add_library(forge_engine SHARED
     engine/RenderEngine.cpp
     resources/FrameBuffer.cpp
     resources/FullScreenQuad.cpp
-    passes/ShaderProgram.cpp
+    gl/ShaderProgram.cpp
     passes/CameraPass.cpp
     passes/PresentPass.cpp
     passes/EffectPass.cpp
