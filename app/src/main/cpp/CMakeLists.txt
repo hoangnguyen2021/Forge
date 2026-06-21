@@ -16,7 +16,7 @@ add_library(forge_engine SHARED
     resource/FrameBuffer.cpp
     resource/FullScreenQuad.cpp
     shader/ShaderProgram.cpp
-    shader/PassthroughRenderer.cpp
+    shader/CameraPass.cpp
     shader/PresentPass.cpp
     shader/EffectPass.cpp
 )

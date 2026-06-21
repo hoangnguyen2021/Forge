@@ -61,7 +61,7 @@ bool PresentPass::init(const FullScreenQuad* quad) {
 void PresentPass::draw(GLuint inputTexture) const {
     glUseProgram(program_);
 
-    // Standard 3-step bind of the input texture to unit 0 (see PassthroughRenderer::draw).
+    // Standard 3-step bind of the input texture to unit 0 (see CameraPass::draw).
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, inputTexture);
     glUniform1i(uTexture_, 0);

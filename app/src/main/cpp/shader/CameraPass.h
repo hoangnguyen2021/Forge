@@ -16,13 +16,13 @@ class FullScreenQuad;
  * matrix, not a plain 2D texture, so it sits at the head of the chain rather than
  * in the uniform effect list.
  */
-class PassthroughRenderer {
+class CameraPass {
 public:
-    PassthroughRenderer() = default;
-    ~PassthroughRenderer() { destroy(); }
+    CameraPass() = default;
+    ~CameraPass() { destroy(); }
 
-    PassthroughRenderer(const PassthroughRenderer&)            = delete;
-    PassthroughRenderer& operator=(const PassthroughRenderer&) = delete;
+    CameraPass(const CameraPass&)            = delete;
+    CameraPass& operator=(const CameraPass&) = delete;
 
     // quad is owned by the caller (RenderEngine) and shared across passes; it
     // must outlive this renderer and stay valid for every draw() call.

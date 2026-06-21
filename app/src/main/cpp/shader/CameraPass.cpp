@@ -1,4 +1,4 @@
-#include "PassthroughRenderer.h"
+#include "CameraPass.h"
 
 #include "../CheckGl.h"
 #include "../resource/FullScreenQuad.h"
@@ -7,7 +7,7 @@
 #include <GLES2/gl2ext.h>
 #include <algorithm>
 
-#define LOG_TAG "PassthroughRenderer"
+#define LOG_TAG "CameraPass"
 #include "../Log.h"
 
 namespace forge {
@@ -73,7 +73,7 @@ static constexpr std::string_view kFragSrc = R"GLSL(
     }
 )GLSL";
 
-bool PassthroughRenderer::init(GLuint oesTextureId, const FullScreenQuad* quad) {
+bool CameraPass::init(GLuint oesTextureId, const FullScreenQuad* quad) {
     // We sample these but don't own them: the OES texture and quad are created and
     // freed by RenderEngine. We only keep handles to them.
     oesTextureId_ = oesTextureId;
@@ -99,7 +99,7 @@ bool PassthroughRenderer::init(GLuint oesTextureId, const FullScreenQuad* quad) 
     uCropScale_  = glGetUniformLocation(program_, "uCropScale");
     uCropOffset_ = glGetUniformLocation(program_, "uCropOffset");
 
-    CHECK_GL("PassthroughRenderer::init");
+    CHECK_GL("CameraPass::init");
     LOGI("initialized");
     return true;
 }
@@ -112,7 +112,7 @@ bool PassthroughRenderer::init(GLuint oesTextureId, const FullScreenQuad* quad) 
 // Example: camera 1080x1920 (portrait) into a 1080x1080 (square) surface:
 //   scaleW=1.0, scaleH=0.5625 -> renderScale=1.0 -> cropScaleY=0.5625, cropOffsetY=0.219
 //   -> only the center 56.25% of the camera height shows, cropped equally top and bottom.
-void PassthroughRenderer::setViewport(int camW, int camH, int surfW, int surfH) {
+void CameraPass::setViewport(int camW, int camH, int surfW, int surfH) {
     // Scale needed to fill the surface along each axis independently.
     float scaleW = static_cast<float>(surfW) / static_cast<float>(camW);
     float scaleH = static_cast<float>(surfH) / static_cast<float>(camH);
@@ -140,7 +140,7 @@ void PassthroughRenderer::setViewport(int camW, int camH, int surfW, int surfH) 
 // Issues one full-screen draw that samples the camera texture onto the quad.
 // texMatrix4x4 is SurfaceTexture.getTransformMatrix() and changes every frame, so
 // it's re-fetched and re-uploaded each call.
-void PassthroughRenderer::draw(const float* texMatrix4x4) const {
+void CameraPass::draw(const float* texMatrix4x4) const {
     // OpenGL is a global state machine: this makes our program the one every
     // following GL call and the draw use.
     glUseProgram(program_);
@@ -162,12 +162,12 @@ void PassthroughRenderer::draw(const float* texMatrix4x4) const {
     // covers every pixel of the target).
     quad_->draw();
 
-    CHECK_GL("PassthroughRenderer::draw");
+    CHECK_GL("CameraPass::draw");
 }
 
 // Frees only what this pass owns: the shader program. The OES texture and quad
 // belong to RenderEngine and are freed there.
-void PassthroughRenderer::destroy() {
+void CameraPass::destroy() {
     if (program_ != 0) {
         glDeleteProgram(program_);
         program_ = 0;

@@ -13,7 +13,7 @@ namespace forge {
  * FBO B, run the next effect on A's output — and present to screen with the same
  * call shape, ping-ponging through a pool of framebuffers it owns.
  *
- * The camera/source pass (PassthroughRenderer) is deliberately not a RenderPass:
+ * The camera/source pass (CameraPass) is deliberately not a RenderPass:
  * its input is an external OES texture plus a per-frame SurfaceTexture transform,
  * not a 2D texture, so it sits at the head of the graph rather than in the
  * uniform chain. Everything downstream of the first offscreen target conforms to

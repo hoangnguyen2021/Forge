@@ -124,9 +124,9 @@ bool RenderEngine::initPipeline() {
 
     // Head pass: samples the OES camera texture, applies texMatrix4x4 (sensor
     // orientation + HAL crop) and cover-crop, renders into the first ping-pong target.
-    auto camera = std::make_unique<PassthroughRenderer>();
+    auto camera = std::make_unique<CameraPass>();
     if (!camera->init(oesTextureId_, quad.get())) {
-        LOGE("PassthroughRenderer init failed");
+        LOGE("CameraPass init failed");
         return false;
     }
 

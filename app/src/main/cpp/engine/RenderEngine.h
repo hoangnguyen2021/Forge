@@ -3,7 +3,7 @@
 #include "../egl/EglContext.h"
 #include "../resource/FrameBuffer.h"
 #include "../resource/FullScreenQuad.h"
-#include "../shader/PassthroughRenderer.h"
+#include "../shader/CameraPass.h"
 #include "../shader/RenderPass.h"
 
 #include <GLES3/gl3.h>
@@ -22,7 +22,7 @@ namespace forge {
  * Canonical pipeline map (other files point here instead of redrawing it):
  *
  *   camera OES texture          one camera frame, delivered via SurfaceTexture
- *        |   camera_ (PassthroughRenderer): orientation + cover-crop
+ *        |   camera_ (CameraPass): orientation + cover-crop
  *        v
  *   pingPong_[0] <--+
  *        |          |  effects_ (RenderPass chain): each effect reads one
@@ -80,7 +80,7 @@ private:
     // matrix) and renders the cropped, oriented frame into pingPong_[0]. Kept as the
     // concrete type, outside the effects_ chain, because its input differs from a
     // RenderPass (external OES + matrix, not a 2D texture).
-    std::unique_ptr<PassthroughRenderer> camera_;
+    std::unique_ptr<CameraPass> camera_;
     // Ordered effect chain, each behind the RenderPass interface. Every pass samples
     // the previous stage's output and writes the next ping-pong target, so extending
     // the chain is a single push_back in initPipeline — no new members or wiring.
