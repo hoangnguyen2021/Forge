@@ -1,5 +1,6 @@
 #include "RenderEngine.h"
 
+#include "../effects/GaussianBlur.h"
 #include "../gl/CheckGl.h"
 #include "../passes/EffectPass.h"
 #include "../passes/PresentPass.h"
@@ -13,68 +14,6 @@
 #include "../Log.h"
 
 namespace forge {
-
-// First effect in the chain: a separable Gaussian blur, split into a horizontal pass
-// (this shader) and a vertical pass (kBlurVFragSrc). Blurring along one axis and then
-// the other is mathematically identical to a single 2D Gaussian, but costs 2*N texture
-// taps per pixel instead of N*N — the standard separable-convolution optimization, and
-// the reason the engine runs two passes instead of one.
-//
-// Each pass reads 9 taps (the centre plus four neighbours on each side) along its axis,
-// weighting them by a fixed Gaussian kernel (kWeight, summing to 1 so the image keeps
-// its overall brightness). uTexelSize turns a "one pixel" step into UV space; this
-// shader walks along x (uTexelSize.x), the vertical pass along y.
-static constexpr std::string_view kBlurHFragSrc = R"GLSL(
-    #version 300 es
-    precision mediump float;     // medium float precision, the usual mobile default for color math
-    in vec2 vTexCoord;           // interpolated UV from the vertex shader, 0..1
-    uniform sampler2D uTexture;  // the input image to blur (previous pass's output)
-    uniform vec2 uTexelSize;     // size of one texel in UV space (1/width, 1/height)
-    out vec4 fragColor;          // the blurred color written for this pixel
-
-    // Gaussian weights for the centre tap and the four neighbours on each side. The
-    // kernel is symmetric, so one array serves both sides; the weights sum to 1.0
-    // (centre + 2 * the other four) to preserve overall brightness.
-    const float kWeight[5] = float[](0.2270270270, 0.1945945946, 0.1216216216,
-                                     0.0540540541, 0.0162162162);
-
-    void main() {
-        // Centre tap first, then step outward along x, adding the mirrored pair of
-        // neighbours at each distance with the same weight.
-        vec3 acc = texture(uTexture, vTexCoord).rgb * kWeight[0];
-        for (int i = 1; i < 5; i++) {
-            vec2 off = vec2(float(i) * uTexelSize.x, 0.0);
-            acc += texture(uTexture, vTexCoord + off).rgb * kWeight[i];
-            acc += texture(uTexture, vTexCoord - off).rgb * kWeight[i];
-        }
-        fragColor = vec4(acc, 1.0);
-    }
-)GLSL";
-
-// Vertical half of the separable Gaussian (see kBlurHFragSrc for the technique and the
-// kernel). Identical to the horizontal pass except it steps along y, so it blurs the
-// already horizontally-blurred image into the final 2D result.
-static constexpr std::string_view kBlurVFragSrc = R"GLSL(
-    #version 300 es
-    precision mediump float;     // medium float precision, the usual mobile default for color math
-    in vec2 vTexCoord;           // interpolated UV from the vertex shader, 0..1
-    uniform sampler2D uTexture;  // the horizontally-blurred image (previous pass's output)
-    uniform vec2 uTexelSize;     // size of one texel in UV space (1/width, 1/height)
-    out vec4 fragColor;          // the blurred color written for this pixel
-
-    const float kWeight[5] = float[](0.2270270270, 0.1945945946, 0.1216216216,
-                                     0.0540540541, 0.0162162162);
-
-    void main() {
-        vec3 acc = texture(uTexture, vTexCoord).rgb * kWeight[0];
-        for (int i = 1; i < 5; i++) {
-            vec2 off = vec2(0.0, float(i) * uTexelSize.y);
-            acc += texture(uTexture, vTexCoord + off).rgb * kWeight[i];
-            acc += texture(uTexture, vTexCoord - off).rgb * kWeight[i];
-        }
-        fragColor = vec4(acc, 1.0);
-    }
-)GLSL";
 
 // Creates the EGL context bound to the given Android window. Must run on the
 // thread that will later issue draw calls — EGL contexts are thread-local and
