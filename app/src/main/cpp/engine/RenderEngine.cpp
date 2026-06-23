@@ -4,6 +4,7 @@
 #include "../gl/CheckGl.h"
 #include "../passes/EffectPass.h"
 #include "../passes/PresentPass.h"
+#include "../trace/Trace.h"
 
 #include <GLES2/gl2ext.h>
 #include <initializer_list>
@@ -172,35 +173,52 @@ void RenderEngine::drawFrame(const float* texMatrix4x4) {
         return;
     }
 
+    // Whole-frame slice; the stage slices below nest under it in a Perfetto capture.
+    FORGE_TRACE("RenderEngine::drawFrame");
+
     // Head pass: camera -> pingPong_[0]. The camera pass applies crop and orientation
     // while rendering into the FBO; bind() also sets the viewport to the FBO size.
-    pingPong_[0]->bind();
-    // Clear so any pixel not covered by the camera quad reads black rather than
-    // last-frame garbage (defensive — cover-mode crop fills the target, but a
-    // transient mismatch frame on resize can leave gaps).
-    glClear(GL_COLOR_BUFFER_BIT);
-    camera_->draw(texMatrix4x4);
+    {
+        FORGE_TRACE("CameraPass");
+        pingPong_[0]->bind();
+        // Clear so any pixel not covered by the camera quad reads black rather than
+        // last-frame garbage (defensive — cover-mode crop fills the target, but a
+        // transient mismatch frame on resize can leave gaps).
+        glClear(GL_COLOR_BUFFER_BIT);
+        camera_->draw(texMatrix4x4);
+    }
 
     // Effect chain: each pass reads the previous target and writes the other. No clear
     // needed — an effect writes every pixel. After the loop, src indexes the target
     // holding the final result.
     int src = 0;
     int dst = 1;
-    for (const auto& effect : effects_) {
-        pingPong_[dst]->bind();
-        effect->draw(pingPong_[src]->textureId());
-        std::swap(src, dst);
+    {
+        FORGE_TRACE("EffectChain");
+        for (const auto& effect : effects_) {
+            pingPong_[dst]->bind();
+            effect->draw(pingPong_[src]->textureId());
+            std::swap(src, dst);
+        }
     }
 
     // Present: final target -> screen. Bind the default framebuffer (0) and restore
     // the surface viewport, since the FBO binds changed it.
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, surfaceW_, surfaceH_);
-    present_->draw(pingPong_[src]->textureId());
+    {
+        FORGE_TRACE("PresentPass");
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glViewport(0, 0, surfaceW_, surfaceH_);
+        present_->draw(pingPong_[src]->textureId());
+    }
 
     CHECK_GL("RenderEngine::drawFrame");
     // Promote the just-rendered back buffer to the front buffer so the user sees it.
-    egl_->swapBuffers();
+    // This is where the GL thread typically blocks waiting on the GPU and vsync, so
+    // its slice usually dominates a CPU-side trace.
+    {
+        FORGE_TRACE("swapBuffers");
+        egl_->swapBuffers();
+    }
 }
 
 // Releases per-surface GL state in reverse order of acquisition. Must run on
