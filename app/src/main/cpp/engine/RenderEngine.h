@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../egl/EglContext.h"
+#include "../gl/GpuTimer.h"
 #include "../resources/FrameBuffer.h"
 #include "../resources/FullScreenQuad.h"
 #include "../passes/CameraPass.h"
@@ -97,6 +98,10 @@ private:
     // pass after an offscreen pass changed it.
     int surfaceW_ = 0;
     int surfaceH_ = 0;
+    // Per-pass GPU timing. Disabled (no-op) if the device lacks the timer extension.
+    // gpuLogFrame_ throttles how often the harvested timings are logged.
+    GpuTimer gpuTimer_;
+    int gpuLogFrame_ = 0;
 };
 
 }  // namespace forge

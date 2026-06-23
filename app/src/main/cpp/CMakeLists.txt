@@ -16,6 +16,7 @@ add_library(forge_engine SHARED
     resources/FrameBuffer.cpp
     resources/FullScreenQuad.cpp
     gl/ShaderProgram.cpp
+    gl/GpuTimer.cpp
     passes/CameraPass.cpp
     passes/PresentPass.cpp
     passes/EffectPass.cpp

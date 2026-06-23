@@ -126,6 +126,10 @@ bool RenderEngine::initPipeline() {
     pingPong_[0] = std::move(ping);
     pingPong_[1] = std::move(pong);
 
+    // Optional: enable per-pass GPU timing if the device supports the extension. A failure
+    // here just leaves timing disabled — it must not fail the pipeline.
+    gpuTimer_.init();
+
     CHECK_GL("RenderEngine::initPipeline");
     return true;
 }
@@ -175,11 +179,15 @@ void RenderEngine::drawFrame(const float* texMatrix4x4) {
 
     // Whole-frame slice; the stage slices below nest under it in a Perfetto capture.
     FORGE_TRACE("RenderEngine::drawFrame");
+    // Harvest GPU timings issued a few frames ago. Each GpuZone below adds the real GPU
+    // cost of its pass — invisible to the CPU slices, which only measure command issue.
+    gpuTimer_.beginFrame();
 
     // Head pass: camera -> pingPong_[0]. The camera pass applies crop and orientation
     // while rendering into the FBO; bind() also sets the viewport to the FBO size.
     {
         FORGE_TRACE("CameraPass");
+        GpuZone gpu(gpuTimer_, GpuTimer::Zone::Camera);
         pingPong_[0]->bind();
         // Clear so any pixel not covered by the camera quad reads black rather than
         // last-frame garbage (defensive — cover-mode crop fills the target, but a
@@ -195,6 +203,7 @@ void RenderEngine::drawFrame(const float* texMatrix4x4) {
     int dst = 1;
     {
         FORGE_TRACE("EffectChain");
+        GpuZone gpu(gpuTimer_, GpuTimer::Zone::Effects);
         for (const auto& effect : effects_) {
             pingPong_[dst]->bind();
             effect->draw(pingPong_[src]->textureId());
@@ -206,9 +215,17 @@ void RenderEngine::drawFrame(const float* texMatrix4x4) {
     // the surface viewport, since the FBO binds changed it.
     {
         FORGE_TRACE("PresentPass");
+        GpuZone gpu(gpuTimer_, GpuTimer::Zone::Present);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glViewport(0, 0, surfaceW_, surfaceH_);
         present_->draw(pingPong_[src]->textureId());
+    }
+
+    // Periodically surface the GPU-side cost of each pass (the numbers CPU tracing can't
+    // see). Throttled so it doesn't spam Logcat at frame rate.
+    if (gpuTimer_.available() && ++gpuLogFrame_ % 120 == 0) {
+        LOGI("GPU ms: camera=%.3f effects=%.3f present=%.3f", gpuTimer_.lastMs(GpuTimer::Zone::Camera),
+             gpuTimer_.lastMs(GpuTimer::Zone::Effects), gpuTimer_.lastMs(GpuTimer::Zone::Present));
     }
 
     CHECK_GL("RenderEngine::drawFrame");
@@ -226,6 +243,7 @@ void RenderEngine::drawFrame(const float* texMatrix4x4) {
 // free GPU objects (programs, VBO, FBOs) that require a current context. Tearing
 // down EGL first would orphan those objects in the driver.
 void RenderEngine::surfaceDestroyed() {
+    gpuTimer_.destroy();
     present_.reset();
     effects_.clear();
     camera_.reset();
