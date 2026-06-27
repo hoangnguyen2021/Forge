@@ -25,7 +25,7 @@ namespace forge {
 class GpuTimer {
 public:
     // The passes we time. Count must stay last — it doubles as the array size.
-    enum class Zone { Camera, Effects, Present, Count };
+    enum class Zone { Camera, Effects, Composite, Count };
 
     // Loads the extension entry points and allocates the query objects. Requires a current
     // GL context. Returns false (and leaves the timer disabled) if the GPU lacks the

@@ -1,5 +1,6 @@
 #include "EffectPass.h"
 
+#include "PassthroughVert.h"
 #include "../gl/CheckGl.h"
 #include "../gl/ShaderProgram.h"
 #include "../resources/FullScreenQuad.h"
@@ -11,24 +12,10 @@
 
 namespace forge {
 
-// Vertex shader: a full-screen passthrough shared by every effect. The geometry is
-// already in NDC and the UVs are straight 0..1 — the camera pass baked in any crop
-// and orientation — so this only forwards the position and texture coordinate.
-static constexpr std::string_view kVertSrc = R"GLSL(
-    #version 300 es
-    layout(location = 0) in vec2 aPosition;  // a quad corner in NDC, -1..1
-    layout(location = 1) in vec2 aTexCoord;  // that corner's UV into the input image, 0..1
-    out vec2 vTexCoord;                      // UV forwarded to the fragment shader
-    void main() {
-        gl_Position = vec4(aPosition, 0.0, 1.0);
-        vTexCoord = aTexCoord;
-    }
-)GLSL";
-
 bool EffectPass::init(const FullScreenQuad* quad, std::string_view fragmentSrc) {
     quad_ = quad;
 
-    GLuint vert = compileShader(GL_VERTEX_SHADER, kVertSrc);
+    GLuint vert = compileShader(GL_VERTEX_SHADER, kPassthroughVertSrc);
     GLuint frag = compileShader(GL_FRAGMENT_SHADER, fragmentSrc);
     if (vert == 0 || frag == 0) {
         return false;

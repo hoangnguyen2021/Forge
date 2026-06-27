@@ -2,14 +2,18 @@
 
 #include "../effects/GaussianBlur.h"
 #include "../gl/CheckGl.h"
+#include "../passes/CompositePass.h"
 #include "../passes/EffectPass.h"
-#include "../passes/PresentPass.h"
 #include "../trace/Trace.h"
 
 #include <GLES2/gl2ext.h>
+#include <algorithm>
+#include <cmath>
+#include <cstdint>
 #include <initializer_list>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #define LOG_TAG "RenderEngine"
 #include "../Log.h"
@@ -68,9 +72,50 @@ GLuint RenderEngine::createOesTexture() {
     return oesTextureId_;
 }
 
+// Builds the placeholder segmentation mask for the background-blur composite: a
+// CPU-generated radial gradient (1 at the center, ramping to 0 by the edge) uploaded
+// as a small single-channel R8 texture. Stands in for the eventual TFLite person-
+// segmentation output, which arrives the same way — a low-res 2D texture the composite
+// samples and lets GL_LINEAR upsample to frame size. Read as .r in the composite shader:
+// 1 keeps the sharp foreground, 0 falls through to the blurred background.
+GLuint RenderEngine::createMaskTexture() {
+    constexpr int   kSize   = 256;
+    constexpr float kRadius = kSize * 0.40f;  // sharp-disc radius, in texels
+    const float     center  = (kSize - 1) * 0.5f;
+
+    std::vector<uint8_t> pixels(static_cast<size_t>(kSize) * kSize);
+    for (int y = 0; y < kSize; ++y) {
+        for (int x = 0; x < kSize; ++x) {
+            float dx = (static_cast<float>(x) - center) / kRadius;
+            float dy = (static_cast<float>(y) - center) / kRadius;
+            float d  = std::sqrt(dx * dx + dy * dy);
+            // 1 inside the disc, linearly down to 0 at its edge: a soft round
+            // foreground that confines the blur to the surround.
+            float m = std::clamp(1.0f - d, 0.0f, 1.0f);
+            pixels[static_cast<size_t>(y) * kSize + x] = static_cast<uint8_t>(m * 255.0f + 0.5f);
+        }
+    }
+
+    glGenTextures(1, &maskTextureId_);
+    glBindTexture(GL_TEXTURE_2D, maskTextureId_);
+    // R8: one 8-bit channel is all a coverage mask needs, and it matches a segmentation
+    // model's single-probability output. (256-byte rows are 4-aligned, so the default
+    // GL_UNPACK_ALIGNMENT is fine.)
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, kSize, kSize, 0, GL_RED, GL_UNSIGNED_BYTE, pixels.data());
+    // GL_LINEAR so the low-res mask upsamples smoothly when sampled at full-res UVs.
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    CHECK_GL("RenderEngine::createMaskTexture");
+    return maskTextureId_;
+}
+
 // Builds the render graph that turns camera frames into screen pixels: the shared
-// full-screen quad, the camera head pass, the effect chain, the present pass, and
-// the two ping-pong targets the chain hands off through. Must run after
+// full-screen quad, the camera head pass, the blur chain, the composite pass, the
+// sharp target, the two blur ping-pong targets, and the placeholder mask. Must run after
 // createOesTexture() — the camera pass samples that texture — and while the EGL
 // context is current. Each stage is built into a local first and only committed to
 // members once every step has succeeded; a partial failure returns false and the
@@ -106,23 +151,32 @@ bool RenderEngine::initPipeline() {
         effects.push_back(std::move(effect));
     }
 
-    // Final pass: blits the chain's output to the window with straight UVs.
-    auto present = std::make_unique<PresentPass>();
-    if (!present->init(quad.get())) {
-        LOGE("PresentPass init failed");
+    // Terminal pass: composites the sharp frame, its blurred copy, and the mask
+    // (mix(blurred, sharp, mask)) straight to the window.
+    auto composite = std::make_unique<CompositePass>();
+    if (!composite->init(quad.get())) {
+        LOGE("CompositePass init failed");
         return false;
     }
 
-    // Two offscreen targets the chain ping-pongs between, sized later in setViewport.
-    auto ping = std::make_unique<FrameBuffer>();
-    auto pong = std::make_unique<FrameBuffer>();
+    // Three offscreen targets, sized later in setViewport: sharp_ holds the untouched
+    // camera frame (kept alive so the composite can read it), and the two ping-pong
+    // targets carry the blur.
+    auto sharp = std::make_unique<FrameBuffer>();
+    auto ping  = std::make_unique<FrameBuffer>();
+    auto pong  = std::make_unique<FrameBuffer>();
+
+    // Placeholder segmentation mask (Step 1): created once, never resized. Writes the
+    // maskTextureId_ member directly — safe because no fallible step follows it.
+    createMaskTexture();
 
     // Commit: every step succeeded, so move the locals into members in one shot. The
     // passes cached quad.get(), whose pointee address is unchanged by the unique_ptr move.
     quad_        = std::move(quad);
     camera_      = std::move(camera);
     effects_     = std::move(effects);
-    present_     = std::move(present);
+    composite_   = std::move(composite);
+    sharp_       = std::move(sharp);
     pingPong_[0] = std::move(ping);
     pingPong_[1] = std::move(pong);
 
@@ -146,8 +200,11 @@ void RenderEngine::setViewport(int camW, int camH, int surfW, int surfH) {
     if (camera_) {
         camera_->setViewport(camW, camH, surfW, surfH);
     }
-    // Size both ping-pong targets to the surface so every stage renders at display
-    // resolution. ensureSize is a no-op unless the size changed.
+    // Size the sharp target and both ping-pong targets to the surface so every stage
+    // renders at display resolution. ensureSize is a no-op unless the size changed.
+    if (sharp_) {
+        sharp_->ensureSize(surfW, surfH);
+    }
     for (auto& fbo : pingPong_) {
         if (fbo) {
             fbo->ensureSize(surfW, surfH);
@@ -166,14 +223,14 @@ void RenderEngine::setViewport(int camW, int camH, int surfW, int surfH) {
 // transform from SurfaceTexture.getTransformMatrix() that compensates for sensor
 // orientation and HAL crop — it must be re-read every frame.
 //
-// Graph: camera OES --[camera]--> pingPong[0] --[effect..]--> pingPong[..] --[present]--> screen.
-// The effect chain ping-pongs between the two targets; present blits whichever holds
-// the final result. With no effects, present blits the camera output directly.
+// Graph: camera OES --[camera]--> sharp --[blur..]--> pingPong = blurred, then
+// [composite] mixes sharp + blurred + mask --> screen. The blur chain reads sharp (not
+// a ping-pong target), so the sharp frame survives for the composite.
 void RenderEngine::drawFrame(const float* texMatrix4x4) {
     // Defensive guard: a queued onFrameAvailable can fire after surfaceDestroyed
-    // has cleared state, or before setViewport has sized the ping-pong targets.
-    if (!egl_ || !camera_ || !present_ || !pingPong_[0] || !pingPong_[0]->ready() ||
-        !pingPong_[1] || !pingPong_[1]->ready()) {
+    // has cleared state, or before setViewport has sized the offscreen targets.
+    if (!egl_ || !camera_ || !composite_ || !sharp_ || !sharp_->ready() || !pingPong_[0] ||
+        !pingPong_[0]->ready() || !pingPong_[1] || !pingPong_[1]->ready()) {
         return;
     }
 
@@ -183,12 +240,13 @@ void RenderEngine::drawFrame(const float* texMatrix4x4) {
     // cost of its pass — invisible to the CPU slices, which only measure command issue.
     gpuTimer_.beginFrame();
 
-    // Head pass: camera -> pingPong_[0]. The camera pass applies crop and orientation
-    // while rendering into the FBO; bind() also sets the viewport to the FBO size.
+    // Head pass: camera -> sharp_. The sharp frame is kept alive for the whole frame so
+    // the composite can read the crisp original after the blur chain has run. The camera
+    // pass applies crop and orientation while rendering; bind() sets the viewport too.
     {
         FORGE_TRACE("CameraPass");
         GpuZone gpu(gpuTimer_, GpuTimer::Zone::Camera);
-        pingPong_[0]->bind();
+        sharp_->bind();
         // Clear so any pixel not covered by the camera quad reads black rather than
         // last-frame garbage (defensive — cover-mode crop fills the target, but a
         // transient mismatch frame on resize can leave gaps).
@@ -196,36 +254,38 @@ void RenderEngine::drawFrame(const float* texMatrix4x4) {
         camera_->draw(texMatrix4x4);
     }
 
-    // Effect chain: each pass reads the previous target and writes the other. No clear
-    // needed — an effect writes every pixel. After the loop, src indexes the target
-    // holding the final result.
-    int src = 0;
-    int dst = 1;
+    // Blur chain: blur a COPY of the sharp frame, ping-ponging through the two targets.
+    // The chain's input is sharp_ (not a ping-pong target), so the sharp frame survives;
+    // blurInput tracks the last target written = the blurred result. No clear needed —
+    // an effect writes every pixel.
+    const FrameBuffer* blurInput = sharp_.get();
+    int dst = 0;
     {
         FORGE_TRACE("EffectChain");
         GpuZone gpu(gpuTimer_, GpuTimer::Zone::Effects);
         for (const auto& effect : effects_) {
             pingPong_[dst]->bind();
-            effect->draw(pingPong_[src]->textureId());
-            std::swap(src, dst);
+            effect->draw(blurInput->textureId());
+            blurInput = pingPong_[dst].get();
+            dst ^= 1;
         }
     }
 
-    // Present: final target -> screen. Bind the default framebuffer (0) and restore
-    // the surface viewport, since the FBO binds changed it.
+    // Composite -> screen: mix(blurred, sharp, mask). Terminal pass, so bind the default
+    // framebuffer (0) and restore the surface viewport, since the FBO binds changed it.
     {
-        FORGE_TRACE("PresentPass");
-        GpuZone gpu(gpuTimer_, GpuTimer::Zone::Present);
+        FORGE_TRACE("CompositePass");
+        GpuZone gpu(gpuTimer_, GpuTimer::Zone::Composite);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glViewport(0, 0, surfaceW_, surfaceH_);
-        present_->draw(pingPong_[src]->textureId());
+        composite_->draw(sharp_->textureId(), blurInput->textureId(), maskTextureId_);
     }
 
     // Periodically surface the GPU-side cost of each pass (the numbers CPU tracing can't
     // see). Throttled so it doesn't spam Logcat at frame rate.
     if (gpuTimer_.available() && ++gpuLogFrame_ % 120 == 0) {
-        LOGI("GPU ms: camera=%.3f effects=%.3f present=%.3f", gpuTimer_.lastMs(GpuTimer::Zone::Camera),
-             gpuTimer_.lastMs(GpuTimer::Zone::Effects), gpuTimer_.lastMs(GpuTimer::Zone::Present));
+        LOGI("GPU ms: camera=%.3f effects=%.3f composite=%.3f", gpuTimer_.lastMs(GpuTimer::Zone::Camera),
+             gpuTimer_.lastMs(GpuTimer::Zone::Effects), gpuTimer_.lastMs(GpuTimer::Zone::Composite));
     }
 
     CHECK_GL("RenderEngine::drawFrame");
@@ -244,12 +304,15 @@ void RenderEngine::drawFrame(const float* texMatrix4x4) {
 // down EGL first would orphan those objects in the driver.
 void RenderEngine::surfaceDestroyed() {
     gpuTimer_.destroy();
-    present_.reset();
+    composite_.reset();
     effects_.clear();
     camera_.reset();
+    sharp_.reset();
     pingPong_[0].reset();
     pingPong_[1].reset();
     quad_.reset();
+    glDeleteTextures(1, &maskTextureId_);
+    maskTextureId_ = 0;
     glDeleteTextures(1, &oesTextureId_);
     oesTextureId_ = 0;
     egl_.reset();
