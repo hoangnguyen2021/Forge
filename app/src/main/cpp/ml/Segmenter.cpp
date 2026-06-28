@@ -38,6 +38,8 @@ std::string errorOf(const ExpectedT& e) {
 
 }  // namespace
 
+Segmenter::Segmenter() = default;
+
 Segmenter::~Segmenter() {
     {
         std::lock_guard<std::mutex> lock(mutex_);

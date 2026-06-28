@@ -79,6 +79,10 @@ internal class CameraSurfaceCallback(
             // build the render graph that samples the OES texture; bail if it fails
             if (!eng.initPipeline()) return@post
 
+            // start background-person segmentation (drives the blur mask); a failure here
+            // leaves segmentation off and the preview fully sharp, so it isn't fatal
+            eng.enableSegmentation(context.assets)
+
             // allocate SurfaceTexture backed by the OES texture
             val st = SurfaceTexture(texId).also { surfaceTexture = it }
 

@@ -1,5 +1,6 @@
 #include "engine/RenderEngine.h"
 
+#include <android/asset_manager_jni.h>
 #include <android/native_window_jni.h>
 #include <jni.h>
 
@@ -59,6 +60,14 @@ Java_app_honguyen_forge_engine_RenderEngine_nativeCreateOesTexture(JNIEnv *, jcl
 JNIEXPORT jboolean JNICALL
 Java_app_honguyen_forge_engine_RenderEngine_nativeInitPipeline(JNIEnv *, jclass, jlong handle) {
     return asRenderEngine(handle)->initPipeline() ? JNI_TRUE : JNI_FALSE;
+}
+
+// Starts the segmentation worker, reading the model from the app's assets. Call after
+// nativeInitPipeline on the GL thread; any failure inside just leaves segmentation off.
+JNIEXPORT void JNICALL Java_app_honguyen_forge_engine_RenderEngine_nativeEnableSegmentation(
+    JNIEnv *env, jclass, jlong handle, jobject assetManager) {
+    AAssetManager *mgr = AAssetManager_fromJava(env, assetManager);
+    asRenderEngine(handle)->enableSegmentation(mgr);
 }
 
 JNIEXPORT void JNICALL Java_app_honguyen_forge_engine_RenderEngine_nativeSetViewport(

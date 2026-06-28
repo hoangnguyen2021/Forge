@@ -4,12 +4,14 @@
 #include "../gl/GpuTimer.h"
 #include "../resources/FrameBuffer.h"
 #include "../resources/FullScreenQuad.h"
+#include "../ml/Segmenter.h"
 #include "../passes/CameraPass.h"
 #include "../passes/CompositePass.h"
 #include "../passes/RenderPass.h"
 
 #include <GLES3/gl3.h>
 #include <android/native_window.h>
+#include <cstdint>
 #include <memory>
 #include <vector>
 
@@ -30,7 +32,7 @@ namespace forge {
  *                               v  ping-ponging the two targets   |
  *                       pingPong_[0] <-> pingPong_[1] = blurred   |
  *                               |                               |
- *   maskTexture_ (placeholder) -+-------------------------------+
+ *   maskTexture_ (segmentation) +-------------------------------+
  *                               v
  *        composite_ (CompositePass): mix(blurred, sharp, mask) --> screen
  *
@@ -43,6 +45,7 @@ namespace forge {
  *   surfaceCreated   - create the EGL context for the window
  *   createOesTexture - allocate the texture the camera writes into
  *   initPipeline     - build the quad, the passes, the offscreen targets, and the mask
+ *   enableSegmentation - (optional) start the person-segmentation worker
  *   setViewport      - (re)size the targets and recompute the crop; may repeat
  *   drawFrame        - render one frame; called once per camera frame
  *   surfaceDestroyed - release everything, in reverse order of acquisition
@@ -63,6 +66,11 @@ public:
     GLuint createOesTexture();
 
     bool initPipeline();
+
+    // Starts background-person segmentation: builds the downscale target + pass and a
+    // worker that runs the model from assets. Call on the GL thread after initPipeline.
+    // On any failure segmentation simply stays off and the frame remains fully sharp.
+    void enableSegmentation(AAssetManager* assets);
 
     void setViewport(int cameraPortraitW, int cameraPortraitH, int surfaceW, int surfaceH);
 
@@ -104,9 +112,22 @@ private:
     // sharp_ and writes [0], each subsequent pass reads one and writes the other, so the
     // last one written holds the fully blurred frame. Both surface-sized in setViewport.
     std::unique_ptr<FrameBuffer> pingPong_[2];
-    // Placeholder segmentation mask (Step 1): a static low-res R8 radial gradient
-    // standing in for the eventual TFLite output. Created in initPipeline, never resized.
+    // The segmentation mask the composite samples: a kSize x kSize R8 texture, created in
+    // initPipeline initialized to all-foreground (no blur) and overwritten each frame the
+    // segmenter produces a new mask. Stays all-foreground if segmentation is off.
     GLuint maskTextureId_ = 0;
+    // Person-segmentation worker (off the GL thread); null when disabled. Produces the
+    // foreground mask uploaded into maskTextureId_. See enableSegmentation.
+    std::unique_ptr<Segmenter> segmenter_;
+    // Downscales sharp_ into segInput_ (a fixed kSize x kSize target) so readback and
+    // inference run at model resolution, not full screen. Built in enableSegmentation,
+    // used only while segmenter_ is set.
+    std::unique_ptr<FrameBuffer> segInput_;
+    std::unique_ptr<RenderPass>  segDownscale_;
+    // Scratch buffers reused each frame: the downscaled RGBA readback handed to the
+    // segmenter, and the R8 mask fetched back for upload.
+    std::vector<uint8_t> readbackRgba_;
+    std::vector<uint8_t> maskBuf_;
     // Surface (screen) dimensions, needed to reset the viewport for the composite
     // pass after an offscreen pass changed it.
     int surfaceW_ = 0;

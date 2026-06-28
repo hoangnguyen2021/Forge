@@ -2,8 +2,10 @@
 
 #include "../effects/GaussianBlur.h"
 #include "../gl/CheckGl.h"
+#include "../ml/Segmenter.h"
 #include "../passes/CompositePass.h"
 #include "../passes/EffectPass.h"
+#include "../passes/PresentPass.h"
 #include "../trace/Trace.h"
 
 #include <GLES2/gl2ext.h>
@@ -72,37 +74,22 @@ GLuint RenderEngine::createOesTexture() {
     return oesTextureId_;
 }
 
-// Builds the placeholder segmentation mask for the background-blur composite: a
-// CPU-generated radial gradient (1 at the center, ramping to 0 by the edge) uploaded
-// as a small single-channel R8 texture. Stands in for the eventual TFLite person-
-// segmentation output, which arrives the same way — a low-res 2D texture the composite
-// samples and lets GL_LINEAR upsample to frame size. Read as .r in the composite shader:
-// 1 keeps the sharp foreground, 0 falls through to the blurred background.
+// Creates the segmentation mask texture the composite samples (.r): a kSize x kSize
+// single-channel R8 texture, initialized to all-foreground (255). That cold-start value
+// means the composite keeps the frame fully sharp (no blur) before the first real mask
+// arrives, or if segmentation is never enabled. The Segmenter overwrites it via
+// glTexSubImage2D in drawFrame as each new mask lands. GL_LINEAR upsamples the low-res
+// mask smoothly to full frame resolution.
 GLuint RenderEngine::createMaskTexture() {
-    constexpr int   kSize   = 256;
-    constexpr float kRadius = kSize * 0.40f;  // sharp-disc radius, in texels
-    const float     center  = (kSize - 1) * 0.5f;
-
-    std::vector<uint8_t> pixels(static_cast<size_t>(kSize) * kSize);
-    for (int y = 0; y < kSize; ++y) {
-        for (int x = 0; x < kSize; ++x) {
-            float dx = (static_cast<float>(x) - center) / kRadius;
-            float dy = (static_cast<float>(y) - center) / kRadius;
-            float d  = std::sqrt(dx * dx + dy * dy);
-            // 1 inside the disc, linearly down to 0 at its edge: a soft round
-            // foreground that confines the blur to the surround.
-            float m = std::clamp(1.0f - d, 0.0f, 1.0f);
-            pixels[static_cast<size_t>(y) * kSize + x] = static_cast<uint8_t>(m * 255.0f + 0.5f);
-        }
-    }
+    constexpr int kSize = Segmenter::kSize;
+    std::vector<uint8_t> pixels(static_cast<size_t>(kSize) * kSize, 255);  // all foreground
 
     glGenTextures(1, &maskTextureId_);
     glBindTexture(GL_TEXTURE_2D, maskTextureId_);
-    // R8: one 8-bit channel is all a coverage mask needs, and it matches a segmentation
-    // model's single-probability output. (256-byte rows are 4-aligned, so the default
+    // R8: one 8-bit channel is all a coverage mask needs, matching the model's single
+    // foreground probability. (kSize-byte rows are 4-aligned, so the default
     // GL_UNPACK_ALIGNMENT is fine.)
     glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, kSize, kSize, 0, GL_RED, GL_UNSIGNED_BYTE, pixels.data());
-    // GL_LINEAR so the low-res mask upsamples smoothly when sampled at full-res UVs.
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -166,8 +153,9 @@ bool RenderEngine::initPipeline() {
     auto ping  = std::make_unique<FrameBuffer>();
     auto pong  = std::make_unique<FrameBuffer>();
 
-    // Placeholder segmentation mask (Step 1): created once, never resized. Writes the
-    // maskTextureId_ member directly — safe because no fallible step follows it.
+    // The mask texture the composite samples; starts all-foreground and is overwritten by
+    // the segmenter when enabled. Writes maskTextureId_ directly — safe because no
+    // fallible step follows it.
     createMaskTexture();
 
     // Commit: every step succeeded, so move the locals into members in one shot. The
@@ -186,6 +174,43 @@ bool RenderEngine::initPipeline() {
 
     CHECK_GL("RenderEngine::initPipeline");
     return true;
+}
+
+// Starts the background-person segmentation pipeline: a fixed-size downscale target and
+// pass (so inference runs at model resolution, not full screen) plus a worker thread that
+// runs the model from assets. Called on the GL thread after initPipeline. On any failure
+// it logs and returns with segmenter_ left null — drawFrame then skips segmentation and
+// the composite keeps the cold-start all-foreground mask (frame stays fully sharp).
+void RenderEngine::enableSegmentation(AAssetManager* assets) {
+    // A passthrough pass that samples sharp_ into the small segInput_ target; GL_LINEAR on
+    // the source FBO makes this a bilinear downscale to model resolution.
+    auto downscale = std::make_unique<PresentPass>();
+    if (!downscale->init(quad_.get())) {
+        LOGE("segmentation downscale pass init failed");
+        return;
+    }
+    auto segInput = std::make_unique<FrameBuffer>();
+    if (!segInput->ensureSize(Segmenter::kSize, Segmenter::kSize)) {
+        LOGE("segmentation input FBO incomplete");
+        return;
+    }
+    // Created last because it starts the worker thread; on the earlier failures above we
+    // never spin one up.
+    auto segmenter = std::make_unique<Segmenter>();
+    if (!segmenter->init(assets, "selfie_multiclass_256x256.tflite")) {
+        LOGE("segmenter init failed");
+        return;
+    }
+
+    constexpr size_t kPixels = static_cast<size_t>(Segmenter::kSize) * Segmenter::kSize;
+    readbackRgba_.assign(kPixels * 4, 0);
+    maskBuf_.assign(kPixels, 0);
+
+    segDownscale_ = std::move(downscale);
+    segInput_     = std::move(segInput);
+    segmenter_    = std::move(segmenter);
+
+    CHECK_GL("RenderEngine::enableSegmentation");
 }
 
 // Passes camera and surface dimensions down the graph so each stage can resize.
@@ -254,6 +279,28 @@ void RenderEngine::drawFrame(const float* texMatrix4x4) {
         camera_->draw(texMatrix4x4);
     }
 
+    // Segmentation (optional): when the worker is idle, downscale the sharp frame to model
+    // resolution, read it back, and hand it off; then upload any finished mask into
+    // maskTextureId_ for the composite. Inference runs on the worker thread, so the mask
+    // lags a few frames — fine for a soft blur. wantsFrame() gates the readback so we only
+    // pay the GPU->CPU sync when the worker can actually consume a frame.
+    if (segmenter_) {
+        FORGE_TRACE("Segmentation");
+        if (segmenter_->wantsFrame()) {
+            segInput_->bind();  // kSize x kSize target; bind() also sets the viewport
+            segDownscale_->draw(sharp_->textureId());  // GL_LINEAR bilinear downscale
+            glReadPixels(0, 0, Segmenter::kSize, Segmenter::kSize, GL_RGBA, GL_UNSIGNED_BYTE,
+                         readbackRgba_.data());
+            segmenter_->submit(readbackRgba_.data());
+        }
+        if (segmenter_->fetchMask(maskBuf_.data())) {
+            glBindTexture(GL_TEXTURE_2D, maskTextureId_);
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, Segmenter::kSize, Segmenter::kSize, GL_RED,
+                            GL_UNSIGNED_BYTE, maskBuf_.data());
+            glBindTexture(GL_TEXTURE_2D, 0);
+        }
+    }
+
     // Blur chain: blur a COPY of the sharp frame, ping-ponging through the two targets.
     // The chain's input is sharp_ (not a ping-pong target), so the sharp frame survives;
     // blurInput tracks the last target written = the blurred result. No clear needed —
@@ -304,9 +351,12 @@ void RenderEngine::drawFrame(const float* texMatrix4x4) {
 // down EGL first would orphan those objects in the driver.
 void RenderEngine::surfaceDestroyed() {
     gpuTimer_.destroy();
+    segmenter_.reset();  // joins the worker thread (no GL); do before GL teardown
     composite_.reset();
     effects_.clear();
     camera_.reset();
+    segDownscale_.reset();
+    segInput_.reset();
     sharp_.reset();
     pingPong_[0].reset();
     pingPong_[1].reset();

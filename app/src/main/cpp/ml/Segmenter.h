@@ -36,7 +36,10 @@ public:
     // a single-channel foreground mask out. The GL thread downscales to this size.
     static constexpr int kSize = 256;
 
-    Segmenter() = default;
+    // Both defined out-of-line in the .cpp: the unique_ptr<litert::...> members are
+    // incomplete here, so the compiler-generated ctor/dtor (which must be able to destroy
+    // them) can't be emitted at every include site.
+    Segmenter();
     ~Segmenter();
 
     Segmenter(const Segmenter&)            = delete;

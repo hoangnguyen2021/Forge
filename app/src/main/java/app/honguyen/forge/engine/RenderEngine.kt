@@ -1,5 +1,6 @@
 package app.honguyen.forge.engine
 
+import android.content.res.AssetManager
 import android.view.Surface
 
 /**
@@ -26,6 +27,12 @@ class RenderEngine private constructor(
      * createOesTexture(); returns false on failure.
      */
     fun initPipeline(): Boolean = nativeInitPipeline(handle)
+
+    /**
+     * Start background-person segmentation that drives the blur mask. Call after
+     * initPipeline() on the GL thread; failures inside leave segmentation off.
+     */
+    fun enableSegmentation(assets: AssetManager) = nativeEnableSegmentation(handle, assets)
 
     /**
      * Configure camera + surface dimensions; drives the cover-style crop math in the renderer.
@@ -81,6 +88,11 @@ class RenderEngine private constructor(
         @JvmStatic private external fun nativeCreateOesTexture(handle: Long): Int
 
         @JvmStatic private external fun nativeInitPipeline(handle: Long): Boolean
+
+        @JvmStatic private external fun nativeEnableSegmentation(
+            handle: Long,
+            assetManager: AssetManager,
+        )
 
         @JvmStatic private external fun nativeSetViewport(
             handle: Long,
