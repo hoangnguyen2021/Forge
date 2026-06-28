@@ -28,7 +28,6 @@ add_library(forge_engine SHARED
     passes/PresentPass.cpp
     passes/EffectPass.cpp
     passes/CompositePass.cpp
-    ml/LiteRtSmokeTest.cpp
 )
 
 target_compile_features(forge_engine PRIVATE cxx_std_20)

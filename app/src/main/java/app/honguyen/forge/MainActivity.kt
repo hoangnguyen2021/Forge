@@ -19,7 +19,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import app.honguyen.forge.camera.CameraPreview
-import app.honguyen.forge.ml.LiteRtSmokeTest
 import app.honguyen.forge.ui.theme.ForgeTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -28,9 +27,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        // Milestone 2a: verify the LiteRT runtime executes the model end to end. Remove
-        // once the real segmenter is wired in.
-        LiteRtSmokeTest.runAndLog(this)
         setContent {
             ForgeTheme {
                 var cameraGranted by remember {
