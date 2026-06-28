@@ -27,7 +27,7 @@ extern "C" {
 JNIEXPORT jstring JNICALL Java_app_honguyen_forge_engine_RenderEngine_nativeVersion(JNIEnv *env,
                                                                                     jclass) {
     LOGI("native layer initialized");
-    return env->NewStringUTF("Forge Engine v0.2 | C++17 | OpenGL ES 3.1");
+    return env->NewStringUTF("Forge Engine v0.2 | C++20 | OpenGL ES 3.1");
 }
 
 JNIEXPORT jlong JNICALL Java_app_honguyen_forge_engine_RenderEngine_nativeCreate(JNIEnv *, jclass) {

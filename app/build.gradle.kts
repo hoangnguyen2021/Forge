@@ -29,6 +29,13 @@ android {
         ndk {
             abiFilters += listOf("arm64-v8a", "x86_64")
         }
+
+        externalNativeBuild {
+            cmake {
+                // Build only our engine (and its deps); skip the LiteRT SDK test executables.
+                targets += "forge_engine"
+            }
+        }
     }
 
     externalNativeBuild {
@@ -36,6 +43,20 @@ android {
             path = file("src/main/cpp/CMakeLists.txt")
             version = "3.22.1"
         }
+    }
+
+    // Package the vendored LiteRT runtime (libLiteRt.so, per ABI) into the APK so the
+    // dynamic linker can find it at load time.
+    sourceSets {
+        getByName("main") {
+            jniLibs.srcDir("src/main/cpp/third_party/litert/jni")
+        }
+    }
+
+    // Keep the .tflite model uncompressed so it can be memory-mapped / read directly
+    // from the APK rather than inflated into memory.
+    androidResources {
+        noCompress.add("tflite")
     }
 
     buildTypes {
