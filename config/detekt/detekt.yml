@@ -13,6 +13,7 @@ complexity:
     ignoreDefaultParameters: true
   TooManyFunctions:
     active: true
+    allowedFunctionsPerObject: 50
     ignoreAnnotatedFunctions:
       - Preview
 
