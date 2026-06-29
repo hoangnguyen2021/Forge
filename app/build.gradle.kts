@@ -94,6 +94,9 @@ ktlint {
 }
 
 dependencies {
+    // Design system (theme + shared UI foundations)
+    implementation(project(":lib-design-system"))
+
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

@@ -19,7 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import app.honguyen.forge.camera.CameraPreview
-import app.honguyen.forge.ui.theme.ForgeTheme
+import app.honguyen.forge.designsystem.theme.ForgeTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint

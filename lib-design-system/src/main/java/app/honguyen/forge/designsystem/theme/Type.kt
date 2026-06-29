@@ -1,4 +1,4 @@
-package app.honguyen.forge.ui.theme
+package app.honguyen.forge.designsystem.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
