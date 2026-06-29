@@ -49,7 +49,7 @@ android {
     // dynamic linker can find it at load time.
     sourceSets {
         getByName("main") {
-            jniLibs.srcDir("src/main/cpp/third_party/litert/jni")
+            jniLibs.directories.add("src/main/cpp/third_party/litert/jni")
         }
     }
 
