@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import app.honguyen.forge.designsystem.catalog.models.ColorRole
 import app.honguyen.forge.designsystem.catalog.models.ShapeRole
 import app.honguyen.forge.designsystem.catalog.models.TypographyRole
 import app.honguyen.forge.designsystem.theme.Dimensions
@@ -86,55 +87,59 @@ private fun Swatch(
 fun ColorRolesCatalog(modifier: Modifier = Modifier) {
     val colorScheme = MaterialTheme.colorScheme
     val extendedColors = LocalForgeExtendedColors.current
+    val roles = listOf(
+        ColorRole(name = "primary", color = colorScheme.primary, onColor = colorScheme.onPrimary),
+        ColorRole(name = "onPrimary", color = colorScheme.onPrimary, onColor = colorScheme.primary),
+        ColorRole(name = "primaryContainer", color = colorScheme.primaryContainer, onColor = colorScheme.onPrimaryContainer),
+        ColorRole(name = "onPrimaryContainer", color = colorScheme.onPrimaryContainer, onColor = colorScheme.primaryContainer),
+        ColorRole(name = "inversePrimary", color = colorScheme.inversePrimary, onColor = colorScheme.onPrimary),
+        ColorRole(name = "secondary", color = colorScheme.secondary, onColor = colorScheme.onSecondary),
+        ColorRole(name = "onSecondary", color = colorScheme.onSecondary, onColor = colorScheme.secondary),
+        ColorRole(name = "secondaryContainer", color = colorScheme.secondaryContainer, onColor = colorScheme.onSecondaryContainer),
+        ColorRole(name = "onSecondaryContainer", color = colorScheme.onSecondaryContainer, onColor = colorScheme.secondaryContainer),
+        ColorRole(name = "tertiary", color = colorScheme.tertiary, onColor = colorScheme.onTertiary),
+        ColorRole(name = "onTertiary", color = colorScheme.onTertiary, onColor = colorScheme.tertiary),
+        ColorRole(name = "tertiaryContainer", color = colorScheme.tertiaryContainer, onColor = colorScheme.onTertiaryContainer),
+        ColorRole(name = "onTertiaryContainer", color = colorScheme.onTertiaryContainer, onColor = colorScheme.tertiaryContainer),
+        ColorRole(name = "error", color = colorScheme.error, onColor = colorScheme.onError),
+        ColorRole(name = "onError", color = colorScheme.onError, onColor = colorScheme.error),
+        ColorRole(name = "errorContainer", color = colorScheme.errorContainer, onColor = colorScheme.onErrorContainer),
+        ColorRole(name = "onErrorContainer", color = colorScheme.onErrorContainer, onColor = colorScheme.errorContainer),
+        ColorRole(name = "live", color = extendedColors.live, onColor = extendedColors.onLive),
+        ColorRole(name = "onLive", color = extendedColors.onLive, onColor = extendedColors.live),
+        ColorRole(name = "liveContainer", color = extendedColors.liveContainer, onColor = extendedColors.onLiveContainer),
+        ColorRole(name = "onLiveContainer", color = extendedColors.onLiveContainer, onColor = extendedColors.liveContainer),
+        ColorRole(name = "background", color = colorScheme.background, onColor = colorScheme.onBackground),
+        ColorRole(name = "onBackground", color = colorScheme.onBackground, onColor = colorScheme.background),
+        ColorRole(name = "surface", color = colorScheme.surface, onColor = colorScheme.onSurface),
+        ColorRole(name = "onSurface", color = colorScheme.onSurface, onColor = colorScheme.surface),
+        ColorRole(name = "surfaceVariant", color = colorScheme.surfaceVariant, onColor = colorScheme.onSurfaceVariant),
+        ColorRole(name = "onSurfaceVariant", color = colorScheme.onSurfaceVariant, onColor = colorScheme.surfaceVariant),
+        ColorRole(name = "surfaceTint", color = colorScheme.surfaceTint, onColor = colorScheme.onPrimary),
+        ColorRole(name = "inverseSurface", color = colorScheme.inverseSurface, onColor = colorScheme.inverseOnSurface),
+        ColorRole(name = "inverseOnSurface", color = colorScheme.inverseOnSurface, onColor = colorScheme.inverseSurface),
+        ColorRole(name = "surfaceDim", color = colorScheme.surfaceDim, onColor = colorScheme.onSurface),
+        ColorRole(name = "surfaceBright", color = colorScheme.surfaceBright, onColor = colorScheme.onSurface),
+        ColorRole(name = "surfaceContainerLowest", color = colorScheme.surfaceContainerLowest, onColor = colorScheme.onSurface),
+        ColorRole(name = "surfaceContainerLow", color = colorScheme.surfaceContainerLow, onColor = colorScheme.onSurface),
+        ColorRole(name = "surfaceContainer", color = colorScheme.surfaceContainer, onColor = colorScheme.onSurface),
+        ColorRole(name = "surfaceContainerHigh", color = colorScheme.surfaceContainerHigh, onColor = colorScheme.onSurface),
+        ColorRole(name = "surfaceContainerHighest", color = colorScheme.surfaceContainerHighest, onColor = colorScheme.onSurface),
+        ColorRole(name = "outline", color = colorScheme.outline, onColor = colorScheme.onSurface),
+        ColorRole(name = "outlineVariant", color = colorScheme.outlineVariant, onColor = colorScheme.onSurfaceVariant),
+        ColorRole(name = "scrim", color = colorScheme.scrim, onColor = colorScheme.inverseSurface),
+    )
     Column(
         modifier = modifier.padding(Dimensions.Size2x),
         verticalArrangement = Arrangement.spacedBy(Dimensions.Size2x),
     ) {
-        Swatch(
-            name = "primary",
-            color = colorScheme.primary,
-            onColor = colorScheme.onPrimary,
-        )
-        Swatch(
-            name = "primaryContainer",
-            color = colorScheme.primaryContainer,
-            onColor = colorScheme.onPrimaryContainer,
-        )
-        Swatch(
-            name = "secondary",
-            color = colorScheme.secondary,
-            onColor = colorScheme.onSecondary,
-        )
-        Swatch(
-            name = "tertiary",
-            color = colorScheme.tertiary,
-            onColor = colorScheme.onTertiary,
-        )
-        Swatch(
-            name = "error",
-            color = colorScheme.error,
-            onColor = colorScheme.onError,
-        )
-        Swatch(
-            name = "live (extended)",
-            color = extendedColors.live,
-            onColor = extendedColors.onLive,
-        )
-        Swatch(
-            name = "surface",
-            color = colorScheme.surface,
-            onColor = colorScheme.onSurface,
-        )
-        Swatch(
-            name = "surfaceContainer",
-            color = colorScheme.surfaceContainer,
-            onColor = colorScheme.onSurface,
-        )
-        Swatch(
-            name = "surfaceContainerHighest",
-            color = colorScheme.surfaceContainerHighest,
-            onColor = colorScheme.onSurface,
-        )
+        roles.forEach { role ->
+            Swatch(
+                name = role.name,
+                color = role.color,
+                onColor = role.onColor,
+            )
+        }
     }
 }
 
@@ -334,7 +339,6 @@ fun DesignSystemCatalog(modifier: Modifier = Modifier) {
 @Preview(
     name = "Catalog — Dark",
     showBackground = true,
-    heightDp = 2400,
 )
 @Composable
 private fun DesignSystemCatalogDarkPreview() {
@@ -346,7 +350,6 @@ private fun DesignSystemCatalogDarkPreview() {
 @Preview(
     name = "Catalog — Light",
     showBackground = true,
-    heightDp = 2400,
 )
 @Composable
 private fun DesignSystemCatalogLightPreview() {
