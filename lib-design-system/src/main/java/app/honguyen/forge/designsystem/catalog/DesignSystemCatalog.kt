@@ -24,10 +24,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import app.honguyen.forge.designsystem.catalog.models.ShapeRole
+import app.honguyen.forge.designsystem.catalog.models.TypographyRole
 import app.honguyen.forge.designsystem.theme.Dimensions
 import app.honguyen.forge.designsystem.theme.Elevations
 import app.honguyen.forge.designsystem.theme.ForgeTheme
@@ -83,84 +84,79 @@ private fun Swatch(
 
 @Composable
 fun ColorRolesCatalog(modifier: Modifier = Modifier) {
-    val cs = MaterialTheme.colorScheme
-    val ext = LocalForgeExtendedColors.current
+    val colorScheme = MaterialTheme.colorScheme
+    val extendedColors = LocalForgeExtendedColors.current
     Column(
         modifier = modifier.padding(Dimensions.Size2x),
         verticalArrangement = Arrangement.spacedBy(Dimensions.Size2x),
     ) {
         Swatch(
             name = "primary",
-            color = cs.primary,
-            onColor = cs.onPrimary,
+            color = colorScheme.primary,
+            onColor = colorScheme.onPrimary,
         )
         Swatch(
             name = "primaryContainer",
-            color = cs.primaryContainer,
-            onColor = cs.onPrimaryContainer,
+            color = colorScheme.primaryContainer,
+            onColor = colorScheme.onPrimaryContainer,
         )
         Swatch(
             name = "secondary",
-            color = cs.secondary,
-            onColor = cs.onSecondary,
+            color = colorScheme.secondary,
+            onColor = colorScheme.onSecondary,
         )
         Swatch(
             name = "tertiary",
-            color = cs.tertiary,
-            onColor = cs.onTertiary,
+            color = colorScheme.tertiary,
+            onColor = colorScheme.onTertiary,
         )
         Swatch(
             name = "error",
-            color = cs.error,
-            onColor = cs.onError,
+            color = colorScheme.error,
+            onColor = colorScheme.onError,
         )
         Swatch(
             name = "live (extended)",
-            color = ext.live,
-            onColor = ext.onLive,
+            color = extendedColors.live,
+            onColor = extendedColors.onLive,
         )
         Swatch(
             name = "surface",
-            color = cs.surface,
-            onColor = cs.onSurface,
+            color = colorScheme.surface,
+            onColor = colorScheme.onSurface,
         )
         Swatch(
             name = "surfaceContainer",
-            color = cs.surfaceContainer,
-            onColor = cs.onSurface,
+            color = colorScheme.surfaceContainer,
+            onColor = colorScheme.onSurface,
         )
         Swatch(
             name = "surfaceContainerHighest",
-            color = cs.surfaceContainerHighest,
-            onColor = cs.onSurface,
+            color = colorScheme.surfaceContainerHighest,
+            onColor = colorScheme.onSurface,
         )
     }
 }
 
 @Composable
 fun TypographyCatalog(modifier: Modifier = Modifier) {
-    data class Role(
-        val name: String,
-        val style: TextStyle,
-    )
-
     val t = MaterialTheme.typography
     val roles = listOf(
-        Role(name = "displayLarge", style = t.displayLarge),
-        Role(name = "displayMedium", style = t.displayMedium),
-        Role(name = "displaySmall", style = t.displaySmall),
-        Role(name = "headlineLarge", style = t.headlineLarge),
-        Role(name = "headlineMedium", style = t.headlineMedium),
-        Role(name = "headlineSmall", style = t.headlineSmall),
-        Role(name = "titleLarge", style = t.titleLarge),
-        Role(name = "titleMedium", style = t.titleMedium),
-        Role(name = "titleSmall", style = t.titleSmall),
-        Role(name = "bodyLarge", style = t.bodyLarge),
-        Role(name = "bodyMedium", style = t.bodyMedium),
-        Role(name = "bodySmall", style = t.bodySmall),
-        Role(name = "labelLarge", style = t.labelLarge),
-        Role(name = "labelMedium", style = t.labelMedium),
-        Role(name = "labelSmall", style = t.labelSmall),
+        TypographyRole(name = "displayLarge", style = t.displayLarge),
+        TypographyRole(name = "displayMedium", style = t.displayMedium),
+        TypographyRole(name = "displaySmall", style = t.displaySmall),
+        TypographyRole(name = "headlineLarge", style = t.headlineLarge),
+        TypographyRole(name = "headlineMedium", style = t.headlineMedium),
+        TypographyRole(name = "headlineSmall", style = t.headlineSmall),
+        TypographyRole(name = "titleLarge", style = t.titleLarge),
+        TypographyRole(name = "titleMedium", style = t.titleMedium),
+        TypographyRole(name = "titleSmall", style = t.titleSmall),
+        TypographyRole(name = "bodyLarge", style = t.bodyLarge),
+        TypographyRole(name = "bodyMedium", style = t.bodyMedium),
+        TypographyRole(name = "bodySmall", style = t.bodySmall),
+        TypographyRole(name = "labelLarge", style = t.labelLarge),
+        TypographyRole(name = "labelMedium", style = t.labelMedium),
+        TypographyRole(name = "labelSmall", style = t.labelSmall),
     )
     Column(
         modifier = modifier.padding(Dimensions.Size2x),
@@ -185,34 +181,29 @@ fun TypographyCatalog(modifier: Modifier = Modifier) {
 
 @Composable
 fun ShapesCatalog(modifier: Modifier = Modifier) {
-    data class Sh(
-        val name: String,
-        val shape: RoundedCornerShape,
-    )
-
-    val s = MaterialTheme.shapes
-    val shapes = listOf(
-        Sh(name = "extraSmall", shape = s.extraSmall as RoundedCornerShape),
-        Sh(name = "small", shape = s.small as RoundedCornerShape),
-        Sh(name = "medium", shape = s.medium as RoundedCornerShape),
-        Sh(name = "large", shape = s.large as RoundedCornerShape),
-        Sh(name = "extraLarge", shape = s.extraLarge as RoundedCornerShape),
+    val shapes = MaterialTheme.shapes
+    val shapeRoles = listOf(
+        ShapeRole(name = "extraSmall", shape = shapes.extraSmall as RoundedCornerShape),
+        ShapeRole(name = "small", shape = shapes.small as RoundedCornerShape),
+        ShapeRole(name = "medium", shape = shapes.medium as RoundedCornerShape),
+        ShapeRole(name = "large", shape = shapes.large as RoundedCornerShape),
+        ShapeRole(name = "extraLarge", shape = shapes.extraLarge as RoundedCornerShape),
     )
     Column(
         modifier = modifier.padding(Dimensions.Size2x),
         verticalArrangement = Arrangement.spacedBy(Dimensions.Size3x),
     ) {
-        shapes.forEach { sh ->
+        shapeRoles.forEach { shapeRole ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
                         .size(Dimensions.Size14x)
-                        .clip(sh.shape)
+                        .clip(shapeRole.shape)
                         .background(MaterialTheme.colorScheme.primaryContainer),
                 )
                 Spacer(modifier = Modifier.width(Dimensions.Size3x))
                 Text(
-                    text = sh.name,
+                    text = shapeRole.name,
                     color = MaterialTheme.colorScheme.onSurface,
                     style = MaterialTheme.typography.bodyMedium,
                 )
