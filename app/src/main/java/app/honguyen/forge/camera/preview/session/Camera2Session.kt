@@ -1,7 +1,8 @@
-package app.honguyen.forge.camera
+package app.honguyen.forge.camera.preview.session
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.SurfaceTexture
 import android.hardware.camera2.CameraCaptureSession
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraDevice
@@ -170,7 +171,10 @@ class Camera2Session(
         private const val DEFAULT_SENSOR_ORIENTATION = 90
 
         private val DEFAULT_PREVIEW_FALLBACK =
-            PreviewSize(Size(DEFAULT_PREVIEW_WIDTH, DEFAULT_PREVIEW_HEIGHT), DEFAULT_SENSOR_ORIENTATION)
+            PreviewSize(
+                Size(DEFAULT_PREVIEW_WIDTH, DEFAULT_PREVIEW_HEIGHT),
+                DEFAULT_SENSOR_ORIENTATION,
+            )
 
         /*
          * Returns the best output size and sensor orientation for the back camera.
@@ -195,7 +199,7 @@ class Camera2Session(
                 ?: return DEFAULT_PREVIEW_FALLBACK
 
             // Query sizes supported for SurfaceTexture output (the format used for preview).
-            val sizes = map.getOutputSizes(android.graphics.SurfaceTexture::class.java)
+            val sizes = map.getOutputSizes(SurfaceTexture::class.java)
 
             val targetAspect = targetWidth.toFloat() / targetHeight.toFloat()
 

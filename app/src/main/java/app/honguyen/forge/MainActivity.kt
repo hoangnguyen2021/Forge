@@ -6,7 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.LaunchedEffect
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import app.honguyen.forge.camera.CameraPreviewScreen
+import app.honguyen.forge.camera.preview.screens.CameraPreviewScreen
 import app.honguyen.forge.designsystem.theme.ForgeTheme
 import dagger.hilt.android.AndroidEntryPoint
 

@@ -1,4 +1,4 @@
-package app.honguyen.forge.camera
+package app.honguyen.forge.camera.preview.screens
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -16,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import app.honguyen.forge.camera.preview.ui.CameraPreview
 
 /**
  * Screen that gates the live camera preview behind the runtime camera permission,

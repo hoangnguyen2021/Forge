@@ -1,4 +1,4 @@
-package app.honguyen.forge.camera
+package app.honguyen.forge.camera.preview.session
 
 import android.util.Size
 
