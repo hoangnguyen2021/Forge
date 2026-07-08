@@ -128,3 +128,12 @@ fun ForgeTheme(
         )
     }
 }
+
+/**
+ * Static token namespace for Forge.
+ */
+object ForgeTheme {
+    val icons: Icons = Icons()
+    val dimensions: Dimensions = Dimensions()
+    val elevations: Elevations = Elevations()
+}

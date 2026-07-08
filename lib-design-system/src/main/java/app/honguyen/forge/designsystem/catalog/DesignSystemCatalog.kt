@@ -30,8 +30,6 @@ import androidx.compose.ui.unit.Dp
 import app.honguyen.forge.designsystem.catalog.models.ColorRole
 import app.honguyen.forge.designsystem.catalog.models.ShapeRole
 import app.honguyen.forge.designsystem.catalog.models.TypographyRole
-import app.honguyen.forge.designsystem.theme.Dimensions
-import app.honguyen.forge.designsystem.theme.Elevations
 import app.honguyen.forge.designsystem.theme.ForgeTheme
 import app.honguyen.forge.designsystem.theme.LocalForgeExtendedColors
 
@@ -43,14 +41,14 @@ private fun CatalogSection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(Dimensions.Size4x),
+            .padding(ForgeTheme.dimensions.size4x),
     ) {
         Text(
             text = title,
             color = MaterialTheme.colorScheme.primary,
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
         )
-        Spacer(modifier = Modifier.height(Dimensions.Size3x))
+        Spacer(modifier = Modifier.height(ForgeTheme.dimensions.size3x))
         content()
     }
 }
@@ -64,15 +62,15 @@ private fun Swatch(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(Dimensions.Size12x)
+            .height(ForgeTheme.dimensions.size12x)
             .clip(MaterialTheme.shapes.small)
             .background(color)
             .border(
-                width = Dimensions.SizeUnit,
+                width = ForgeTheme.dimensions.sizeUnit,
                 color = MaterialTheme.colorScheme.outlineVariant,
                 shape = MaterialTheme.shapes.small,
             )
-            .padding(Dimensions.Size2x),
+            .padding(ForgeTheme.dimensions.size2x),
         contentAlignment = Alignment.CenterStart,
     ) {
         Text(
@@ -290,8 +288,8 @@ fun ColorRolesCatalog(modifier: Modifier = Modifier) {
         ),
     )
     Column(
-        modifier = modifier.padding(Dimensions.Size2x),
-        verticalArrangement = Arrangement.spacedBy(Dimensions.Size2x),
+        modifier = modifier.padding(ForgeTheme.dimensions.size2x),
+        verticalArrangement = Arrangement.spacedBy(ForgeTheme.dimensions.size2x),
     ) {
         roles.forEach { role ->
             Swatch(
@@ -324,8 +322,8 @@ fun TypographyCatalog(modifier: Modifier = Modifier) {
         TypographyRole(name = "labelSmall", style = t.labelSmall),
     )
     Column(
-        modifier = modifier.padding(Dimensions.Size2x),
-        verticalArrangement = Arrangement.spacedBy(Dimensions.Size3x),
+        modifier = modifier.padding(ForgeTheme.dimensions.size2x),
+        verticalArrangement = Arrangement.spacedBy(ForgeTheme.dimensions.size3x),
     ) {
         roles.forEach { role ->
             Column {
@@ -355,18 +353,18 @@ fun ShapesCatalog(modifier: Modifier = Modifier) {
         ShapeRole(name = "extraLarge", shape = shapes.extraLarge as RoundedCornerShape),
     )
     Column(
-        modifier = modifier.padding(Dimensions.Size2x),
-        verticalArrangement = Arrangement.spacedBy(Dimensions.Size3x),
+        modifier = modifier.padding(ForgeTheme.dimensions.size2x),
+        verticalArrangement = Arrangement.spacedBy(ForgeTheme.dimensions.size3x),
     ) {
         shapeRoles.forEach { shapeRole ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .size(Dimensions.Size14x)
+                        .size(ForgeTheme.dimensions.size14x)
                         .clip(shapeRole.shape)
                         .background(MaterialTheme.colorScheme.primaryContainer),
                 )
-                Spacer(modifier = Modifier.width(Dimensions.Size3x))
+                Spacer(modifier = Modifier.width(ForgeTheme.dimensions.size3x))
                 Text(
                     text = shapeRole.name,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -386,12 +384,12 @@ private fun MetricRow(
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = name,
-            modifier = Modifier.width(Dimensions.Size20x),
+            modifier = Modifier.width(ForgeTheme.dimensions.size20x),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.labelMedium,
         )
         swatch(value)
-        Spacer(modifier = Modifier.width(Dimensions.Size2x))
+        Spacer(modifier = Modifier.width(ForgeTheme.dimensions.size2x))
         Text(
             text = "${value.value.toInt()}dp",
             color = MaterialTheme.colorScheme.outline,
@@ -403,17 +401,17 @@ private fun MetricRow(
 @Composable
 fun SpacingCatalog(modifier: Modifier = Modifier) {
     val steps = listOf(
-        "Size1x" to Dimensions.Size1x,
-        "Size2x" to Dimensions.Size2x,
-        "Size4x" to Dimensions.Size4x,
-        "Size6x" to Dimensions.Size6x,
-        "Size8x" to Dimensions.Size8x,
-        "Size12x" to Dimensions.Size12x,
-        "Size16x" to Dimensions.Size16x,
+        "size1x" to ForgeTheme.dimensions.size1x,
+        "size2x" to ForgeTheme.dimensions.size2x,
+        "size4x" to ForgeTheme.dimensions.size4x,
+        "size6x" to ForgeTheme.dimensions.size6x,
+        "size8x" to ForgeTheme.dimensions.size8x,
+        "size12x" to ForgeTheme.dimensions.size12x,
+        "size16x" to ForgeTheme.dimensions.size16x,
     )
     Column(
-        modifier = modifier.padding(Dimensions.Size2x),
-        verticalArrangement = Arrangement.spacedBy(Dimensions.Size2x),
+        modifier = modifier.padding(ForgeTheme.dimensions.size2x),
+        verticalArrangement = Arrangement.spacedBy(ForgeTheme.dimensions.size2x),
     ) {
         steps.forEach { (name, value) ->
             MetricRow(
@@ -422,7 +420,7 @@ fun SpacingCatalog(modifier: Modifier = Modifier) {
                 swatch = { dp ->
                     Box(
                         modifier = Modifier
-                            .height(Dimensions.Size4x)
+                            .height(ForgeTheme.dimensions.size4x)
                             .width(dp)
                             .background(MaterialTheme.colorScheme.tertiary),
                     )
@@ -435,30 +433,30 @@ fun SpacingCatalog(modifier: Modifier = Modifier) {
 @Composable
 fun ElevationCatalog(modifier: Modifier = Modifier) {
     val levels = listOf(
-        "Level0" to Elevations.Level0,
-        "Level1" to Elevations.Level1,
-        "Level2" to Elevations.Level2,
-        "Level3" to Elevations.Level3,
-        "Level4" to Elevations.Level4,
-        "Level5" to Elevations.Level5,
+        "level0" to ForgeTheme.elevations.level0,
+        "level1" to ForgeTheme.elevations.level1,
+        "level2" to ForgeTheme.elevations.level2,
+        "level3" to ForgeTheme.elevations.level3,
+        "level4" to ForgeTheme.elevations.level4,
+        "level5" to ForgeTheme.elevations.level5,
     )
     Column(
-        modifier = modifier.padding(Dimensions.Size2x),
-        verticalArrangement = Arrangement.spacedBy(Dimensions.Size3x),
+        modifier = modifier.padding(ForgeTheme.dimensions.size2x),
+        verticalArrangement = Arrangement.spacedBy(ForgeTheme.dimensions.size3x),
     ) {
         levels.forEach { (name, value) ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(
                     modifier = Modifier.size(
-                        width = Dimensions.Size16x,
-                        height = Dimensions.Size10x,
+                        width = ForgeTheme.dimensions.size16x,
+                        height = ForgeTheme.dimensions.size10x,
                     ),
                     shape = MaterialTheme.shapes.small,
                     color = MaterialTheme.colorScheme.surface,
                     tonalElevation = value,
                     shadowElevation = value,
                 ) {}
-                Spacer(modifier = Modifier.width(Dimensions.Size3x))
+                Spacer(modifier = Modifier.width(ForgeTheme.dimensions.size3x))
                 Text(
                     text = "$name (${value.value.toInt()}dp)",
                     color = MaterialTheme.colorScheme.onSurface,
@@ -479,11 +477,11 @@ fun DesignSystemCatalog(modifier: Modifier = Modifier) {
             modifier = Modifier
                 .safeDrawingPadding()
                 .verticalScroll(rememberScrollState())
-                .padding(vertical = Dimensions.Size4x),
+                .padding(vertical = ForgeTheme.dimensions.size4x),
         ) {
             Text(
                 text = "Forge Design System",
-                modifier = Modifier.padding(horizontal = Dimensions.Size4x),
+                modifier = Modifier.padding(horizontal = ForgeTheme.dimensions.size4x),
                 color = MaterialTheme.colorScheme.primary,
                 style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
             )
