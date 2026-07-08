@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.Forge" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Splash theme -->
+    <style name="Theme.Forge.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.Forge</item>
+    </style>
+
+    <!-- Post-splash base theme -->
+    <style name="Theme.Forge" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/splash_background</item>
+    </style>
 </resources>

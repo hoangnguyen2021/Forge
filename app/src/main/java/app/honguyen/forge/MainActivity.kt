@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import app.honguyen.forge.camera.CameraPreview
 import app.honguyen.forge.designsystem.theme.ForgeTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -25,10 +26,17 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        var contentReady = false
+        splashScreen.setKeepOnScreenCondition { !contentReady }
+
         setContent {
             ForgeTheme {
+                LaunchedEffect(Unit) { contentReady = true }
+
                 var cameraGranted by remember {
                     mutableStateOf(
                         checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED,
