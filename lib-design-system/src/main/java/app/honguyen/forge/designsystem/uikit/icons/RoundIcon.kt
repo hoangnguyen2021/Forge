@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import app.honguyen.forge.designsystem.modifier.thenIf
+import app.honguyen.forge.designsystem.modifier.thenIfNotNull
 import app.honguyen.forge.designsystem.theme.ForgeTheme
 import app.honguyen.forge.designsystem.theme.icons.FramePerson
 
@@ -29,7 +30,7 @@ fun RoundIcon(
     size: Dp = ForgeTheme.dimensions.size10x,
     containerColor: Color = Color.Transparent,
     contentColor: Color = LocalContentColor.current,
-    borderColor: Color = Color.Transparent,
+    borderColor: Color? = null,
 ) {
     Box(
         modifier = modifier
@@ -38,10 +39,10 @@ fun RoundIcon(
                 color = containerColor,
                 shape = CircleShape,
             )
-            .thenIf(borderColor != Color.Transparent) {
+            .thenIfNotNull(borderColor) {
                 border(
                     width = ForgeTheme.dimensions.sizeUnit,
-                    color = borderColor,
+                    color = it,
                     shape = CircleShape,
                 )
             },
