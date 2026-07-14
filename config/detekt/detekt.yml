@@ -26,7 +26,7 @@ naming:
       - Composable
   TopLevelPropertyNaming:
     active: true
-    constantPattern: '[A-Z][_A-Z0-9]*'
+    constantPattern: '[A-Z][_a-zA-Z0-9]*'
 
 style:
   MagicNumber:
