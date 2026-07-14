@@ -1,5 +1,7 @@
 package app.honguyen.forge.designsystem.theme
 
+import androidx.compose.ui.unit.dp
+
 /**
  * Receiver for Forge's curated Material Symbols set; built once by [ForgeTheme] and
  * reached via ForgeTheme.icons. Each icon is an extension property on this type, in its
@@ -7,3 +9,6 @@ package app.honguyen.forge.designsystem.theme
  * overrides the glyph's baked-in fill.
  */
 class Icons internal constructor()
+
+internal val IconDefaultSize = 24.dp
+internal const val IconViewportSize = 24f

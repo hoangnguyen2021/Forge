@@ -14,20 +14,20 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import app.honguyen.forge.designsystem.theme.ForgeTheme
+import app.honguyen.forge.designsystem.theme.IconDefaultSize
+import app.honguyen.forge.designsystem.theme.IconViewportSize
 import app.honguyen.forge.designsystem.theme.Icons
 
-/** Material Symbol `frame_person` (outlined): a person framed by corner brackets. */
 val Icons.FramePerson: ImageVector
     get() {
         framePersonCache?.let { return it }
         return ImageVector.Builder(
             name = "FramePerson",
-            defaultWidth = 24.dp,
-            defaultHeight = 24.dp,
-            viewportWidth = 24f,
-            viewportHeight = 24f,
+            defaultWidth = IconDefaultSize,
+            defaultHeight = IconDefaultSize,
+            viewportWidth = IconViewportSize,
+            viewportHeight = IconViewportSize,
         ).apply {
             path(fill = SolidColor(Color.Black)) {
                 moveTo(12f, 12f)
@@ -128,7 +128,7 @@ private var framePersonCache: ImageVector? = null
 @Preview(name = "FramePerson", showBackground = true)
 @Composable
 private fun FramePersonPreview() {
-    ForgeTheme(darkTheme = true) {
+    ForgeTheme {
         Surface(color = MaterialTheme.colorScheme.surface) {
             Box(
                 modifier = Modifier
