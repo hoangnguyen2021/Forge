@@ -33,7 +33,15 @@ val Icons.VideoMode: ImageVector
                 // Body top edge, left to right, into the top-right corner.
                 moveTo(BODY_LEFT + BODY_CORNER_RADIUS, BODY_TOP)
                 horizontalLineTo(BODY_RIGHT - BODY_CORNER_RADIUS)
-                arcTo(BODY_CORNER_RADIUS, BODY_CORNER_RADIUS, 0f, isMoreThanHalf = false, isPositiveArc = true, BODY_RIGHT, BODY_TOP + BODY_CORNER_RADIUS)
+                arcTo(
+                    BODY_CORNER_RADIUS,
+                    BODY_CORNER_RADIUS,
+                    0f,
+                    isMoreThanHalf = false,
+                    isPositiveArc = true,
+                    BODY_RIGHT,
+                    BODY_TOP + BODY_CORNER_RADIUS,
+                )
 
                 // Down the right edge to the neck, out along the flaring lens, and back in.
                 verticalLineTo(LENS_NECK_TOP)
@@ -45,11 +53,35 @@ val Icons.VideoMode: ImageVector
 
                 // Down to the bottom-right corner, across the bottom, and up the left side.
                 verticalLineTo(BODY_BOTTOM - BODY_CORNER_RADIUS)
-                arcTo(BODY_CORNER_RADIUS, BODY_CORNER_RADIUS, 0f, isMoreThanHalf = false, isPositiveArc = true, BODY_RIGHT - BODY_CORNER_RADIUS, BODY_BOTTOM)
+                arcTo(
+                    BODY_CORNER_RADIUS,
+                    BODY_CORNER_RADIUS,
+                    0f,
+                    isMoreThanHalf = false,
+                    isPositiveArc = true,
+                    BODY_RIGHT - BODY_CORNER_RADIUS,
+                    BODY_BOTTOM,
+                )
                 horizontalLineTo(BODY_LEFT + BODY_CORNER_RADIUS)
-                arcTo(BODY_CORNER_RADIUS, BODY_CORNER_RADIUS, 0f, isMoreThanHalf = false, isPositiveArc = true, BODY_LEFT, BODY_BOTTOM - BODY_CORNER_RADIUS)
+                arcTo(
+                    BODY_CORNER_RADIUS,
+                    BODY_CORNER_RADIUS,
+                    0f,
+                    isMoreThanHalf = false,
+                    isPositiveArc = true,
+                    BODY_LEFT,
+                    BODY_BOTTOM - BODY_CORNER_RADIUS,
+                )
                 verticalLineTo(BODY_TOP + BODY_CORNER_RADIUS)
-                arcTo(BODY_CORNER_RADIUS, BODY_CORNER_RADIUS, 0f, isMoreThanHalf = false, isPositiveArc = true, BODY_LEFT + BODY_CORNER_RADIUS, BODY_TOP)
+                arcTo(
+                    BODY_CORNER_RADIUS,
+                    BODY_CORNER_RADIUS,
+                    0f,
+                    isMoreThanHalf = false,
+                    isPositiveArc = true,
+                    BODY_LEFT + BODY_CORNER_RADIUS,
+                    BODY_TOP,
+                )
                 close()
             }
         }.build().also { videoModeCache = it }

@@ -40,8 +40,6 @@ import app.honguyen.forge.designsystem.theme.icons.PictureMode
 import app.honguyen.forge.designsystem.theme.icons.VideoMode
 import kotlin.math.roundToInt
 
-enum class CameraMode { Photo, Video }
-
 @Composable
 fun CameraModeSwitch(
     mode: CameraMode,

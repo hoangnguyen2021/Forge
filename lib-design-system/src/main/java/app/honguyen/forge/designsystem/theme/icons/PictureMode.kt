@@ -44,25 +44,89 @@ val Icons.PictureMode: ImageVector
                 lineTo(7.65f, 4.0f)
                 arcTo(0.8f, 0.8f, 0f, isMoreThanHalf = false, isPositiveArc = true, 7.0f, TOP)
                 horizontalLineTo(LEFT + CORNER_RADIUS)
-                arcTo(CORNER_RADIUS, CORNER_RADIUS, 0f, isMoreThanHalf = false, isPositiveArc = false, LEFT, TOP + CORNER_RADIUS)
+                arcTo(
+                    CORNER_RADIUS,
+                    CORNER_RADIUS,
+                    0f,
+                    isMoreThanHalf = false,
+                    isPositiveArc = false,
+                    LEFT,
+                    TOP + CORNER_RADIUS,
+                )
                 verticalLineTo(BOTTOM - CORNER_RADIUS)
-                arcTo(CORNER_RADIUS, CORNER_RADIUS, 0f, isMoreThanHalf = false, isPositiveArc = false, LEFT + CORNER_RADIUS, BOTTOM)
+                arcTo(
+                    CORNER_RADIUS,
+                    CORNER_RADIUS,
+                    0f,
+                    isMoreThanHalf = false,
+                    isPositiveArc = false,
+                    LEFT + CORNER_RADIUS,
+                    BOTTOM,
+                )
                 horizontalLineTo(RIGHT - CORNER_RADIUS)
-                arcTo(CORNER_RADIUS, CORNER_RADIUS, 0f, isMoreThanHalf = false, isPositiveArc = false, RIGHT, BOTTOM - CORNER_RADIUS)
+                arcTo(
+                    CORNER_RADIUS,
+                    CORNER_RADIUS,
+                    0f,
+                    isMoreThanHalf = false,
+                    isPositiveArc = false,
+                    RIGHT,
+                    BOTTOM - CORNER_RADIUS,
+                )
                 verticalLineTo(TOP + CORNER_RADIUS)
-                arcTo(CORNER_RADIUS, CORNER_RADIUS, 0f, isMoreThanHalf = false, isPositiveArc = false, RIGHT - CORNER_RADIUS, TOP)
+                arcTo(
+                    CORNER_RADIUS,
+                    CORNER_RADIUS,
+                    0f,
+                    isMoreThanHalf = false,
+                    isPositiveArc = false,
+                    RIGHT - CORNER_RADIUS,
+                    TOP,
+                )
                 close()
 
                 // Lens ring: a full circle wound opposite the body, opening a hole.
                 moveTo(LENS_CENTER_X, LENS_CENTER_Y + LENS_OUTER_RADIUS)
-                arcTo(LENS_OUTER_RADIUS, LENS_OUTER_RADIUS, 0f, isMoreThanHalf = true, isPositiveArc = true, LENS_CENTER_X + LENS_OUTER_RADIUS, LENS_CENTER_Y)
-                arcTo(LENS_OUTER_RADIUS, LENS_OUTER_RADIUS, 0f, isMoreThanHalf = false, isPositiveArc = true, LENS_CENTER_X, LENS_CENTER_Y + LENS_OUTER_RADIUS)
+                arcTo(
+                    LENS_OUTER_RADIUS,
+                    LENS_OUTER_RADIUS,
+                    0f,
+                    isMoreThanHalf = true,
+                    isPositiveArc = true,
+                    LENS_CENTER_X + LENS_OUTER_RADIUS,
+                    LENS_CENTER_Y,
+                )
+                arcTo(
+                    LENS_OUTER_RADIUS,
+                    LENS_OUTER_RADIUS,
+                    0f,
+                    isMoreThanHalf = false,
+                    isPositiveArc = true,
+                    LENS_CENTER_X,
+                    LENS_CENTER_Y + LENS_OUTER_RADIUS,
+                )
                 close()
 
                 // Lens dot filling the ring's centre.
                 moveTo(LENS_CENTER_X, LENS_CENTER_Y - LENS_INNER_RADIUS)
-                arcToRelative(LENS_INNER_RADIUS, LENS_INNER_RADIUS, 0f, isMoreThanHalf = false, isPositiveArc = true, 0f, LENS_INNER_RADIUS * 2)
-                arcToRelative(LENS_INNER_RADIUS, LENS_INNER_RADIUS, 0f, isMoreThanHalf = false, isPositiveArc = true, 0f, -LENS_INNER_RADIUS * 2)
+                arcToRelative(
+                    LENS_INNER_RADIUS,
+                    LENS_INNER_RADIUS,
+                    0f,
+                    isMoreThanHalf = false,
+                    isPositiveArc = true,
+                    0f,
+                    LENS_INNER_RADIUS * 2,
+                )
+                arcToRelative(
+                    LENS_INNER_RADIUS,
+                    LENS_INNER_RADIUS,
+                    0f,
+                    isMoreThanHalf = false,
+                    isPositiveArc = true,
+                    0f,
+                    -LENS_INNER_RADIUS * 2,
+                )
                 close()
             }
         }.build().also { pictureModeCache = it }
