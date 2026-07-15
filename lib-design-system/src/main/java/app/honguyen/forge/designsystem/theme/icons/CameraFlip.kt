@@ -21,18 +21,6 @@ import app.honguyen.forge.designsystem.theme.IconDefaultSize
 import app.honguyen.forge.designsystem.theme.IconViewportSize
 import app.honguyen.forge.designsystem.theme.Icons
 
-/**
- * Two circular arrows chasing each other around the viewport, each ending in a single
- * swept-back barb.
- *
- * The second arrow is the first rotated 180 degrees about the viewport centre, so the
- * glyph is unchanged by a half turn. Any button that spins it 180 degrees to signal a
- * state flip therefore lands on a pose identical to the one it started from, and can keep
- * turning the same direction forever instead of unwinding.
- *
- * Drawn as a stroke rather than a filled outline: round caps and joins round off every
- * tail, tip and barb end for free, and the weight stays a single number to tune.
- */
 val Icons.CameraFlip: ImageVector
     get() {
         cameraFlipCache?.let { return it }
