@@ -10,7 +10,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -63,7 +62,7 @@ fun SpinToggleButton(
     modifier: Modifier = Modifier,
     contentDescription: String? = null,
     size: Dp = ForgeTheme.dimensions.size12x,
-    shape: Shape = CircleShape,
+    shape: Shape = MaterialTheme.shapes.small,
     containerColor: Color = Color.Transparent,
     contentColor: Color = LocalContentColor.current,
     borderColor: Color? = null,
@@ -130,7 +129,7 @@ private const val SPIN_DURATION_MILLIS = 300
 @Preview(name = "SpinToggleButton", showBackground = true)
 @Composable
 private fun SpinToggleButtonPreview() {
-    ForgeTheme {
+    ForgeTheme(darkTheme = true) {
         Surface(color = MaterialTheme.colorScheme.surface) {
             var frontFacing by remember { mutableStateOf(true) }
             Box(

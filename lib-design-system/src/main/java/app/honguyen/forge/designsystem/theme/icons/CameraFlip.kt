@@ -1,7 +1,6 @@
 package app.honguyen.forge.designsystem.theme.icons
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
@@ -39,39 +38,39 @@ val Icons.CameraFlip: ImageVector
                 strokeLineJoin = StrokeJoin.Round,
             ) {
                 // Arrow arcing over the top, left to right, head at the right end.
-                moveTo(5.42f, 9.61f)
+                moveTo(4.40f, 9.24f)
                 arcTo(
                     horizontalEllipseRadius = ARC_RADIUS,
                     verticalEllipseRadius = ARC_RADIUS,
                     theta = 0f,
                     isMoreThanHalf = false,
                     isPositiveArc = true,
-                    x1 = 18.58f,
-                    y1 = 9.61f,
+                    x1 = 19.60f,
+                    y1 = 9.24f,
                 )
-                lineTo(20.01f, 6.52f)
+                lineTo(21.25f, 5.67f)
 
                 // The same arrow, rotated 180 degrees about (12, 12): under the bottom,
                 // right to left, head at the left end.
-                moveTo(18.58f, 14.39f)
+                moveTo(19.60f, 14.76f)
                 arcTo(
                     horizontalEllipseRadius = ARC_RADIUS,
                     verticalEllipseRadius = ARC_RADIUS,
                     theta = 0f,
                     isMoreThanHalf = false,
                     isPositiveArc = true,
-                    x1 = 5.42f,
-                    y1 = 14.39f,
+                    x1 = 4.40f,
+                    y1 = 14.76f,
                 )
-                lineTo(3.99f, 17.48f)
+                lineTo(2.75f, 18.33f)
             }
         }.build().also { cameraFlipCache = it }
     }
 
 private var cameraFlipCache: ImageVector? = null
 
-private const val ARC_RADIUS = 7f
-private const val STROKE_WIDTH = 2f
+private const val ARC_RADIUS = 8.09f
+private const val STROKE_WIDTH = 1.5f
 
 @Preview(name = "CameraFlip", showBackground = true)
 @Composable
@@ -79,9 +78,7 @@ private fun CameraFlipPreview() {
     ForgeTheme {
         Surface(color = MaterialTheme.colorScheme.surface) {
             Box(
-                modifier = Modifier
-                    .safeDrawingPadding()
-                    .padding(ForgeTheme.dimensions.size6x),
+                modifier = Modifier.safeDrawingPadding(),
             ) {
                 Icon(
                     imageVector = ForgeTheme.icons.CameraFlip,
