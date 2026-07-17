@@ -132,8 +132,7 @@ private fun FramePersonPreview() {
         Surface(color = MaterialTheme.colorScheme.surface) {
             Box(
                 modifier = Modifier
-                    .safeDrawingPadding()
-                    .padding(ForgeTheme.dimensions.size6x),
+                    .safeDrawingPadding(),
             ) {
                 Icon(
                     imageVector = ForgeTheme.icons.FramePerson,
