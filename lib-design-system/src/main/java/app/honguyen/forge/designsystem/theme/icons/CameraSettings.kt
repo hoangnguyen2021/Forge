@@ -232,9 +232,11 @@ private fun gearY(
 private const val HALF_TURN = 180f
 private val DEGREES_TO_RADIANS = PI.toFloat() / HALF_TURN
 
-// Placed so the twelve o'clock tooth lands exactly on the 20x20 live area the set draws in.
-private const val GEAR_CENTER_X = 10.9f
-private const val GEAR_CENTER_Y = 10.9f
+// The glyph is symmetric about this point — the teeth at 150 and 210 mirror the one at -30,
+// and the clipped bottom tooth all but mirrors the top — so centring the gear centres the
+// whole icon. It sits on the viewport centre for exactly that reason.
+private const val GEAR_CENTER_X = 12f
+private const val GEAR_CENTER_Y = 12f
 
 // Tip radius sizes the icon, so depth is changed by moving the root circle instead: the span
 // between the two is how far the teeth stand out.
