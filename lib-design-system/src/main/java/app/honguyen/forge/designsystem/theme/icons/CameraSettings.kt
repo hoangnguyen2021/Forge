@@ -56,7 +56,7 @@ private var cameraSettingsCache: ImageVector? = null
 
 /**
  * Everything outside the notch: the viewport wound clockwise, then the notch wound
- * anticlockwise so a non-zero rule cancels it back out.
+ * counterclockwise so a non-zero rule cancels it back out.
  *
  * Only the top and left edges cut anything — they are the two the gear reaches. The other two
  * run off the viewport, which is why the camera may be smaller than the notch.
@@ -79,7 +79,7 @@ private fun PathBuilder.viewportOutsideNotch() {
  * The gear, drawn whole and left for the clip above to bite into.
  *
  * Six teeth on an even 60 degree pitch from straight up. The notch claims the quadrant below
- * and right of the centre, so the third tooth never reaches the canvas and the fourth keeps
+ * and right of the center, so the third tooth never reaches the canvas and the fourth keeps
  * only what lies left of the camera.
  *
  * The outline alternates between climbing a tooth and walking the root circle to the next,
@@ -181,7 +181,7 @@ private fun PathBuilder.viewfinderBump() {
     close()
 }
 
-/** A circle as two half arcs, wound anticlockwise so a non-zero fill reads it as a hole. */
+/** A circle as two half arcs, wound counterclockwise so a non-zero fill reads it as a hole. */
 private fun PathBuilder.circle(
     centerX: Float,
     centerY: Float,
@@ -233,8 +233,8 @@ private const val HALF_TURN = 180f
 private val DEGREES_TO_RADIANS = PI.toFloat() / HALF_TURN
 
 // The glyph is symmetric about this point — the teeth at 150 and 210 mirror the one at -30,
-// and the clipped bottom tooth all but mirrors the top — so centring the gear centres the
-// whole icon. It sits on the viewport centre for exactly that reason.
+// and the clipped bottom tooth all but mirrors the top — so centering the gear centers the
+// whole icon. It sits on the viewport center for exactly that reason.
 private const val GEAR_CENTER_X = 12f
 private const val GEAR_CENTER_Y = 12f
 
@@ -252,7 +252,7 @@ private const val FIRST_TOOTH_ANGLE = -90f
 
 // Half-width where a tooth meets the root circle — the value that shapes the gear, since it
 // is what closes the gaps. Half the 60 degree pitch is the ceiling: at 30 a tooth would run
-// into its neighbour. At 26 the teeth take 84% of the pitch, leaving 8 degrees of daylight.
+// into its neighbor. At 26 the teeth take 84% of the pitch, leaving 8 degrees of daylight.
 private const val TOOTH_ROOT_HALF_ANGLE = 26f
 
 // Not a free choice: the half-width at the tip is whatever makes the flanks parallel, so
@@ -280,7 +280,7 @@ private val FLANK_LENGTH = hypot(
 private val FLANK_CORNER_FRACTION = TOOTH_CORNER_CUT / FLANK_LENGTH
 
 // The notch, and the gap it holds the gear off the camera by. Its corner is the gear's own
-// centre, so the body's left edge falls on the centre line and the crown clears it by the gap.
+// center, so the body's left edge falls on the center line and the crown clears it by the gap.
 private const val CLEARANCE = 0.6f
 private const val NOTCH_LEFT = GEAR_CENTER_X - CLEARANCE
 private const val NOTCH_TOP = GEAR_CENTER_Y

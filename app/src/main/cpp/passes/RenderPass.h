@@ -31,7 +31,7 @@ public:
 
     // Notify the pass that the render-target resolution changed. Default no-op;
     // passes that derive per-pixel state from resolution (e.g. an effect's texel
-    // size for neighbour sampling) override it. Driven by RenderEngine::setViewport,
+    // size for neighbor sampling) override it. Driven by RenderEngine::setViewport,
     // so the engine can resize the whole chain uniformly without knowing concrete types.
     virtual void onViewport(int /*width*/, int /*height*/) {}
 

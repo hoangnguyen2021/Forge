@@ -24,7 +24,7 @@ bool EffectPass::init(const FullScreenQuad* quad, std::string_view fragmentSrc) 
     if (program_ == 0) {
         return false;
     }
-    // uTexelSize is optional: an effect that doesn't sample neighbours won't
+    // uTexelSize is optional: an effect that doesn't sample neighbors won't
     // declare it, leaving the location at -1 so the per-frame glUniform2f below is
     // a silent no-op rather than an error.
     uTexture_   = glGetUniformLocation(program_, "uTexture");
@@ -38,7 +38,7 @@ bool EffectPass::init(const FullScreenQuad* quad, std::string_view fragmentSrc) 
 void EffectPass::onViewport(int width, int height) {
     // One texel measured in UV space: stepping vTexCoord by this amount lands
     // exactly on the next pixel, which is what a convolution kernel needs to read
-    // its neighbours. Guard against a zero size before the surface is known.
+    // its neighbors. Guard against a zero size before the surface is known.
     texelW_ = width > 0 ? 1.0f / static_cast<float>(width) : 0.0f;
     texelH_ = height > 0 ? 1.0f / static_cast<float>(height) : 0.0f;
 }
@@ -53,7 +53,7 @@ void EffectPass::draw(GLuint inputTexture) const {
     glBindTexture(GL_TEXTURE_2D, inputTexture);
     glUniform1i(uTexture_, 0);
 
-    // Upload the texel size so neighbour-sampling effects can offset their reads.
+    // Upload the texel size so neighbor-sampling effects can offset their reads.
     glUniform2f(uTexelSize_, texelW_, texelH_);
 
     quad_->draw();

@@ -101,7 +101,7 @@ fun CameraMenuButton(
 }
 
 /**
- * Interpolates each corner of [start] towards [stop], resolving both to pixels at draw time
+ * Interpolates each corner of [start] toward [stop], resolving both to pixels at draw time
  * so that a percentage corner and an absolute one can be mixed — the circle default is 50%,
  * while the themed shapes it morphs into are fixed dp.
  */

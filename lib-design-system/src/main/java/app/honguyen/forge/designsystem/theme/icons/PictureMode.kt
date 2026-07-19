@@ -29,10 +29,10 @@ val Icons.PictureMode: ImageVector
             viewportHeight = IconViewportSize,
         ).apply {
             path(fill = SolidColor(Color.Black)) {
-                // Body outline, traced anticlockwise from the top-right corner: left across
+                // Body outline, traced counterclockwise from the top-right corner: left across
                 // the top and over the bump, down the left side, right along the bottom,
                 // back up the right side. The four body corners share CORNER_RADIUS; the
-                // bump keeps its own softer radii and stays centred on x = 12 regardless.
+                // bump keeps its own softer radii and stays centered on x = 12 regardless.
                 moveTo(RIGHT - CORNER_RADIUS, TOP)
                 horizontalLineTo(17.0f)
                 arcTo(0.8f, 0.8f, 0f, isMoreThanHalf = false, isPositiveArc = true, 16.35f, 4.0f)
@@ -106,7 +106,7 @@ val Icons.PictureMode: ImageVector
                 )
                 close()
 
-                // Lens dot filling the ring's centre.
+                // Lens dot filling the ring's center.
                 moveTo(LENS_CENTER_X, LENS_CENTER_Y - LENS_INNER_RADIUS)
                 arcToRelative(
                     LENS_INNER_RADIUS,

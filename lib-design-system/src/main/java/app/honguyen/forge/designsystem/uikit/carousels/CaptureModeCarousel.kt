@@ -56,13 +56,13 @@ import kotlin.math.abs
 
 /**
  * A horizontally draggable strip of capture-mode labels, in the style of the Pixel camera app.
- * The selected mode sits at the horizontal centre under a pill that grows and shrinks towards the
- * neighbouring mode's width as the strip moves.
+ * The selected mode sits at the horizontal center under a pill that grows and shrinks toward the
+ * neighboring mode's width as the strip moves.
  *
  * The whole strip is drawn onto a single canvas rather than laid out as children, because the
- * pill has to split labels by colour rather than by element: every label is painted twice, once
+ * pill has to split labels by color rather than by element: every label is painted twice, once
  * clipped to the outside of the pill in [unselectedContentColor] and once clipped to the inside in
- * [selectedContentColor], so a label straddling the pill edge changes colour mid-glyph.
+ * [selectedContentColor], so a label straddling the pill edge changes color mid-glyph.
  */
 @Composable
 fun CaptureModeCarousel(
@@ -92,17 +92,17 @@ fun CaptureModeCarousel(
     }
     val height = with(density) { metrics.labelHeightPx.toDp() } + pillVerticalPadding * 2
 
-    // Scroll position in the strip's own coordinate space: the centre offset of whatever currently
-    // sits under the container's centre line.
+    // Scroll position in the strip's own coordinate space: the center offset of whatever currently
+    // sits under the container's center line.
     var scroll by remember(metrics) {
-        mutableFloatStateOf(metrics.centreOf(modes.indexOf(selectedMode)))
+        mutableFloatStateOf(metrics.centerOf(modes.indexOf(selectedMode)))
     }
     val decay = remember(density) { splineBasedDecay<Float>(density) }
     val settledIndex = remember(metrics) { derivedStateOf { metrics.nearestIndexTo(scroll) } }
     var settleJob by remember(metrics) { mutableStateOf<Job?>(null) }
 
     /**
-     * Animates the strip to [target], cancelling any settle already in flight.
+     * Animates the strip to [target], canceling any settle already in flight.
      *
      * Routing every animation through the one job keeps this the only writer of [scroll] besides
      * the drag itself. Drag deltas are applied synchronously for the same reason: a delta queued
@@ -124,7 +124,7 @@ fun CaptureModeCarousel(
         }
     }
 
-    // Report and tick the moment the centre line crosses into a new mode rather than waiting for
+    // Report and tick the moment the center line crosses into a new mode rather than waiting for
     // the strip to come to rest, so the selection feels attached to the finger.
     val currentOnModeSelected by rememberUpdatedState(onModeSelected)
     LaunchedEffect(metrics, modes) {
@@ -140,7 +140,7 @@ fun CaptureModeCarousel(
     LaunchedEffect(selectedMode, metrics) {
         val target = modes.indexOf(selectedMode)
         if (target != metrics.nearestIndexTo(scroll) && settleJob?.isActive != true) {
-            settleTo(target = metrics.centreOf(target))
+            settleTo(target = metrics.centerOf(target))
         }
     }
 
@@ -163,7 +163,7 @@ fun CaptureModeCarousel(
                         initialVelocity = -velocity,
                     )
                     settleTo(
-                        target = metrics.centreOf(metrics.nearestIndexTo(projected)),
+                        target = metrics.centerOf(metrics.nearestIndexTo(projected)),
                         initialVelocity = -velocity,
                     )
                 },
@@ -173,15 +173,15 @@ fun CaptureModeCarousel(
                     val tapped = metrics.indexAt(
                         x = scroll + (tap.x - size.width / 2f),
                     ) ?: return@detectTapGestures
-                    settleTo(target = metrics.centreOf(tapped))
+                    settleTo(target = metrics.centerOf(tapped))
                 }
             },
     ) {
         Canvas(modifier = Modifier.fillMaxWidth().height(height)) {
-            val centreX = size.width / 2f
+            val centerX = size.width / 2f
             val pillWidth = metrics.pillWidthAt(scroll)
             val pill = Rect(
-                offset = Offset(x = centreX - pillWidth / 2f, y = 0f),
+                offset = Offset(x = centerX - pillWidth / 2f, y = 0f),
                 size = Size(width = pillWidth, height = size.height),
             )
             val radius = CornerRadius(size.height / 2f)
@@ -197,7 +197,7 @@ fun CaptureModeCarousel(
             // Even-odd winding over the full bounds punches the pill out, leaving its complement.
             // Clipping the two passes to complementary regions rather than overdrawing the second
             // on top keeps the seam clean: overlapping anti-aliased glyphs would blend both
-            // colours along the pill edge.
+            // colors along the pill edge.
             val outsidePill = Path().apply {
                 fillType = PathFillType.EvenOdd
                 addRect(Rect(offset = Offset.Zero, size = size))
@@ -208,7 +208,7 @@ fun CaptureModeCarousel(
                 drawLabels(
                     metrics = metrics,
                     scroll = scroll,
-                    centreX = centreX,
+                    centerX = centerX,
                     color = unselectedContentColor,
                 )
             }
@@ -216,7 +216,7 @@ fun CaptureModeCarousel(
                 drawLabels(
                     metrics = metrics,
                     scroll = scroll,
-                    centreX = centreX,
+                    centerX = centerX,
                     color = selectedContentColor,
                 )
             }
@@ -226,16 +226,16 @@ fun CaptureModeCarousel(
 
 /**
  * Paints every label in a single [color], positioned for the given [scroll]. Called once per
- * clip region, so the caller decides which half of the strip this pass ends up colouring.
+ * clip region, so the caller decides which half of the strip this pass ends up coloring.
  */
 private fun DrawScope.drawLabels(
     metrics: CarouselMetrics,
     scroll: Float,
-    centreX: Float,
+    centerX: Float,
     color: Color,
 ) {
     metrics.labels.forEachIndexed { index, label ->
-        val left = centreX + metrics.centreOf(index) - scroll - label.size.width / 2f
+        val left = centerX + metrics.centerOf(index) - scroll - label.size.width / 2f
         if (left > size.width || left + label.size.width < 0f) return@forEachIndexed
         drawText(
             textLayoutResult = label,
@@ -246,8 +246,8 @@ private fun DrawScope.drawLabels(
 }
 
 /**
- * Pre-measured label geometry for the strip. Every position is a centre offset in the strip's own
- * coordinate space, with mode 0's centre at zero, so nothing here depends on the container width.
+ * Pre-measured label geometry for the strip. Every position is a center offset in the strip's own
+ * coordinate space, with mode 0's center at zero, so nothing here depends on the container width.
  */
 private class CarouselMetrics(
     val labels: List<TextLayoutResult>,
@@ -259,21 +259,21 @@ private class CarouselMetrics(
     /** Width the pill would take were each mode selected: its label plus the pill's padding. */
     private val slotWidths = labels.map { it.size.width + horizontalPaddingPx * 2f }
 
-    // Spacing is measured between slot edges, so consecutive centres are half of each neighbouring
+    // Spacing is measured between slot edges, so consecutive centers are half of each neighboring
     // slot apart plus the gap. Labels of differing widths then sit evenly spaced rather than
     // evenly pitched.
-    private val centres = FloatArray(labels.size).apply {
+    private val centers = FloatArray(labels.size).apply {
         for (index in 1 until size) {
             this[index] = this[index - 1] +
                 (slotWidths[index - 1] + slotWidths[index]) / 2f + spacingPx
         }
     }
 
-    fun centreOf(index: Int): Float = centres[index.coerceIn(centres.indices)]
+    fun centerOf(index: Int): Float = centers[index.coerceIn(centers.indices)]
 
-    fun clamp(value: Float): Float = value.coerceIn(centres.first(), centres.last())
+    fun clamp(value: Float): Float = value.coerceIn(centers.first(), centers.last())
 
-    fun nearestIndexTo(value: Float): Int = centres.indices.minBy { abs(centres[it] - value) }
+    fun nearestIndexTo(value: Float): Int = centers.indices.minBy { abs(centers[it] - value) }
 
     /**
      * Pill width at an arbitrary scroll position, interpolated between the slots either side of
@@ -281,16 +281,16 @@ private class CarouselMetrics(
      */
     fun pillWidthAt(scroll: Float): Float {
         val clamped = clamp(scroll)
-        val lower = centres.indexOfLast { it <= clamped }.coerceAtLeast(0)
-        if (lower == centres.lastIndex) return slotWidths.last()
-        val fraction = (clamped - centres[lower]) / (centres[lower + 1] - centres[lower])
+        val lower = centers.indexOfLast { it <= clamped }.coerceAtLeast(0)
+        if (lower == centers.lastIndex) return slotWidths.last()
+        val fraction = (clamped - centers[lower]) / (centers[lower + 1] - centers[lower])
         return slotWidths[lower] + (slotWidths[lower + 1] - slotWidths[lower]) * fraction
     }
 
     /** The mode whose slot contains [x], or null for the gaps between slots. */
     fun indexAt(x: Float): Int? =
-        centres.indices.firstOrNull {
-            abs(centres[it] - x) <= slotWidths[it] / 2f
+        centers.indices.firstOrNull {
+            abs(centers[it] - x) <= slotWidths[it] / 2f
         }
 }
 

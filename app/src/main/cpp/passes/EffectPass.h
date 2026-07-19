@@ -18,8 +18,8 @@ class FullScreenQuad;
  *
  * Every effect shares the same contract: a full-screen passthrough vertex stage,
  * the input texture on unit 0 (uTexture), and uTexelSize — the size of one texel
- * in UV space — so neighbour-sampling effects like convolutions can step to
- * adjacent pixels. Effects that don't read neighbours simply omit uTexelSize and
+ * in UV space — so neighbor-sampling effects like convolutions can step to
+ * adjacent pixels. Effects that don't read neighbors simply omit uTexelSize and
  * the per-frame upload becomes a no-op.
  */
 class EffectPass : public RenderPass {

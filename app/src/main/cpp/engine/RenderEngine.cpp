@@ -236,7 +236,7 @@ void RenderEngine::setViewport(int camW, int camH, int surfW, int surfH) {
         }
     }
     // Let each effect react to the new resolution (e.g. recompute its texel size for
-    // neighbour sampling — a wrong texel size would offset neighbour reads and smear
+    // neighbor sampling — a wrong texel size would offset neighbor reads and smear
     // the result). Passes that don't care inherit RenderPass's no-op onViewport.
     for (const auto& effect : effects_) {
         effect->onViewport(surfW, surfH);

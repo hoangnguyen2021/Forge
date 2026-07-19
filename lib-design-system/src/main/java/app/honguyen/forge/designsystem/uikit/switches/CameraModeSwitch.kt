@@ -69,7 +69,7 @@ fun CameraModeSwitch(
     ) {
         // The sliding highlight, laid down before the icons so they sit on top of it. Its
         // diameter equals the pill height, so it fills the pill top-to-bottom and spans
-        // exactly half the width, travelling a whole segment from photo to video.
+        // exactly half the width, traveling a whole segment from photo to video.
         Box(
             modifier = Modifier
                 .size(segmentSize)
