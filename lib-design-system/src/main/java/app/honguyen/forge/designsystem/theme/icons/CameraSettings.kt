@@ -239,7 +239,7 @@ private const val GEAR_CENTER_Y = 10.9f
 // Tip radius sizes the icon, so depth is changed by moving the root circle instead: the span
 // between the two is how far the teeth stand out.
 private const val GEAR_TIP_RADIUS = 8.9f
-private const val GEAR_ROOT_RADIUS = 7.1f
+private const val GEAR_ROOT_RADIUS = 6.5f
 
 // Sized so the band carrying the teeth stays substantial.
 private const val GEAR_HOLLOW_RADIUS = 2.2f

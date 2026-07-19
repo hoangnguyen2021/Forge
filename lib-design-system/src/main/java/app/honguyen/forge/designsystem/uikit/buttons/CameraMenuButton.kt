@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.util.lerp
 import app.honguyen.forge.designsystem.modifier.thenIfNotNull
 import app.honguyen.forge.designsystem.theme.ForgeTheme
+import app.honguyen.forge.designsystem.theme.icons.CameraSettings
 import app.honguyen.forge.designsystem.theme.icons.FramePerson
 import app.honguyen.forge.designsystem.theme.icons.Tune
 
@@ -148,16 +149,16 @@ private fun CameraMenuButtonPreview() {
                 modifier = Modifier.safeDrawingPadding(),
             ) {
                 CameraMenuButton(
-                    imageVector = ForgeTheme.icons.Tune,
+                    imageVector = ForgeTheme.icons.CameraSettings,
                     onClick = {},
-                    contentDescription = "Photo settings",
+                    contentDescription = "Camera settings",
                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 CameraMenuButton(
-                    imageVector = ForgeTheme.icons.FramePerson,
+                    imageVector = ForgeTheme.icons.Tune,
                     onClick = {},
-                    contentDescription = "Camera effects",
+                    contentDescription = "Tune",
                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
