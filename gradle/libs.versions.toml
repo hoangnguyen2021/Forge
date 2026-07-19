@@ -20,6 +20,7 @@ kotlinSerialization = "1.11.0"
 timber = "5.0.1"
 detekt = "2.0.0-alpha.5"
 ktlint = "14.2.0"
+paparazzi = "2.0.0-alpha05"
 
 [libraries]
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
@@ -68,3 +69,4 @@ room = { id = "androidx.room", version.ref = "room" }
 jetbrains-kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 detekt = { id = "dev.detekt", version.ref = "detekt" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
+paparazzi = { id = "app.cash.paparazzi", version.ref = "paparazzi" }

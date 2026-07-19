@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(./gradlew ktlintCheck detekt)"
+      "Bash(./gradlew ktlintCheck detekt)",
+      "Bash(cp lib-design-system/src/main/java/app/honguyen/forge/designsystem/theme/icons/CameraSettings.kt /tmp/CS.bak)",
+      "Bash(sed -i '' 's/centerY, clockwise = false\\)/centerY, clockwise = true\\)/g' lib-design-system/src/main/java/app/honguyen/forge/designsystem/theme/icons/CameraSettings.kt)",
+      "Bash(./gradlew :lib-design-system:verifyPaparazziDebug)",
+      "Read(//tmp/**)"
     ]
   }
 }
