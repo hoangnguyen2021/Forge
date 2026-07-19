@@ -38,7 +38,6 @@ import androidx.compose.ui.util.lerp
 import app.honguyen.forge.designsystem.modifier.thenIfNotNull
 import app.honguyen.forge.designsystem.theme.ForgeTheme
 import app.honguyen.forge.designsystem.theme.icons.CameraSettings
-import app.honguyen.forge.designsystem.theme.icons.FramePerson
 import app.honguyen.forge.designsystem.theme.icons.Tune
 
 @Composable
