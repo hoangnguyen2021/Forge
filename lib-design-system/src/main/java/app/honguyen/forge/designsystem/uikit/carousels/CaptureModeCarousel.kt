@@ -1,7 +1,7 @@
 package app.honguyen.forge.designsystem.uikit.carousels
 
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.calculateTargetValue
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.splineBasedDecay
@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -48,22 +49,20 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import app.honguyen.forge.designsystem.theme.ForgeTheme
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 /**
  * A horizontally draggable strip of capture-mode labels, in the style of the Pixel camera app.
+ * The selected mode sits at the horizontal centre under a pill that grows and shrinks towards the
+ * neighbouring mode's width as the strip moves.
  *
- * The selected mode is always parked at the horizontal centre under a pill highlight that grows
- * and shrinks towards the neighbouring mode's width as the strip is dragged. Labels are painted
- * twice — once clipped to the outside of the pill in [unselectedContentColor], once clipped to the
- * inside in [selectedContentColor] — so a label straddling the pill edge is split cleanly between
- * the two colours instead of switching all at once.
- *
- * Dragging moves the strip 1:1 with the finger; on release a spline decay projects where the strip
- * would coast to and the nearest mode to that projection is snapped to, so a flick can cross
- * several modes while a short drag falls back to where it started.
+ * The whole strip is drawn onto a single canvas rather than laid out as children, because the
+ * pill has to split labels by colour rather than by element: every label is painted twice, once
+ * clipped to the outside of the pill in [unselectedContentColor] and once clipped to the inside in
+ * [selectedContentColor], so a label straddling the pill edge changes colour mid-glyph.
  */
 @Composable
 fun CaptureModeCarousel(
@@ -93,18 +92,43 @@ fun CaptureModeCarousel(
     }
     val height = with(density) { metrics.labelHeightPx.toDp() } + pillVerticalPadding * 2
 
-    // Scroll position expressed in the strip's own coordinate space: the value is the centre of
-    // whatever currently sits under the container's centre line.
-    val scroll = remember(metrics) { Animatable(metrics.centreOf(modes.indexOf(selectedMode))) }
+    // Scroll position in the strip's own coordinate space: the centre offset of whatever currently
+    // sits under the container's centre line.
+    var scroll by remember(metrics) {
+        mutableFloatStateOf(metrics.centreOf(modes.indexOf(selectedMode)))
+    }
     val decay = remember(density) { splineBasedDecay<Float>(density) }
-    val settledIndex by remember { derivedStateOf { metrics.nearestIndexTo(scroll.value) } }
+    val settledIndex = remember(metrics) { derivedStateOf { metrics.nearestIndexTo(scroll) } }
+    var settleJob by remember(metrics) { mutableStateOf<Job?>(null) }
 
-    // Report and tick as the centre line crosses into a new mode, rather than waiting for the
-    // strip to come to rest — the selection should feel attached to the finger. The callback is
-    // read through a snapshot so this collector can run for the carousel's whole lifetime.
+    /**
+     * Animates the strip to [target], cancelling any settle already in flight.
+     *
+     * Routing every animation through the one job keeps this the only writer of [scroll] besides
+     * the drag itself. Drag deltas are applied synchronously for the same reason: a delta queued
+     * onto a coroutine could land after a settle had begun, cancel it, and strand the strip
+     * between two modes.
+     */
+    fun settleTo(
+        target: Float,
+        initialVelocity: Float = 0f,
+    ) {
+        settleJob?.cancel()
+        settleJob = scope.launch {
+            animate(
+                initialValue = scroll,
+                targetValue = target,
+                initialVelocity = initialVelocity,
+                animationSpec = SnapSpec,
+            ) { value, _ -> scroll = value }
+        }
+    }
+
+    // Report and tick the moment the centre line crosses into a new mode rather than waiting for
+    // the strip to come to rest, so the selection feels attached to the finger.
     val currentOnModeSelected by rememberUpdatedState(onModeSelected)
     LaunchedEffect(metrics, modes) {
-        snapshotFlow { settledIndex }
+        snapshotFlow { settledIndex.value }
             .drop(1)
             .collect { index ->
                 haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -115,8 +139,8 @@ fun CaptureModeCarousel(
     // Follow selection changes driven from outside the carousel (restored state, a tap elsewhere).
     LaunchedEffect(selectedMode, metrics) {
         val target = modes.indexOf(selectedMode)
-        if (target != metrics.nearestIndexTo(scroll.value) && !scroll.isRunning) {
-            scroll.animateTo(targetValue = metrics.centreOf(target), animationSpec = SnapSpec)
+        if (target != metrics.nearestIndexTo(scroll) && settleJob?.isActive != true) {
+            settleTo(target = metrics.centreOf(target))
         }
     }
 
@@ -126,41 +150,39 @@ fun CaptureModeCarousel(
             .height(height)
             .draggable(
                 state = rememberDraggableState { delta ->
-                    scope.launch { scroll.snapTo(metrics.clamp(scroll.value - delta)) }
+                    scroll = metrics.clamp(scroll - delta)
                 },
                 orientation = Orientation.Horizontal,
-                onDragStarted = { scroll.stop() },
+                onDragStarted = { settleJob?.cancel() },
                 onDragStopped = { velocity ->
+                    // Settle on the mode nearest where the strip would have coasted to under its
+                    // own momentum, so a hard flick can cross several modes. Handing the fling
+                    // velocity to the spring keeps finger and animation continuous.
                     val projected = decay.calculateTargetValue(
-                        initialValue = scroll.value,
+                        initialValue = scroll,
                         initialVelocity = -velocity,
                     )
-                    val target = metrics.centreOf(metrics.nearestIndexTo(projected))
-                    scroll.animateTo(targetValue = target, animationSpec = SnapSpec)
+                    settleTo(
+                        target = metrics.centreOf(metrics.nearestIndexTo(projected)),
+                        initialVelocity = -velocity,
+                    )
                 },
             )
             .pointerInput(metrics) {
                 detectTapGestures { tap ->
                     val tapped = metrics.indexAt(
-                        x = scroll.value + (tap.x - size.width / 2f),
+                        x = scroll + (tap.x - size.width / 2f),
                     ) ?: return@detectTapGestures
-                    scope.launch {
-                        scroll.animateTo(
-                            targetValue = metrics.centreOf(tapped),
-                            animationSpec = SnapSpec,
-                        )
-                    }
+                    settleTo(target = metrics.centreOf(tapped))
                 }
             },
     ) {
         Canvas(modifier = Modifier.fillMaxWidth().height(height)) {
             val centreX = size.width / 2f
+            val pillWidth = metrics.pillWidthAt(scroll)
             val pill = Rect(
-                offset = Offset(
-                    x = centreX - metrics.pillWidthAt(scroll.value) / 2f,
-                    y = 0f,
-                ),
-                size = Size(width = metrics.pillWidthAt(scroll.value), height = size.height),
+                offset = Offset(x = centreX - pillWidth / 2f, y = 0f),
+                size = Size(width = pillWidth, height = size.height),
             )
             val radius = CornerRadius(size.height / 2f)
 
@@ -172,7 +194,10 @@ fun CaptureModeCarousel(
             )
 
             val insidePill = Path().apply { addRoundRect(RoundRect(pill, radius)) }
-            // Even-odd over the full bounds punches the pill out, leaving everything outside it.
+            // Even-odd winding over the full bounds punches the pill out, leaving its complement.
+            // Clipping the two passes to complementary regions rather than overdrawing the second
+            // on top keeps the seam clean: overlapping anti-aliased glyphs would blend both
+            // colours along the pill edge.
             val outsidePill = Path().apply {
                 fillType = PathFillType.EvenOdd
                 addRect(Rect(offset = Offset.Zero, size = size))
@@ -182,7 +207,7 @@ fun CaptureModeCarousel(
             clipPath(path = outsidePill) {
                 drawLabels(
                     metrics = metrics,
-                    scroll = scroll.value,
+                    scroll = scroll,
                     centreX = centreX,
                     color = unselectedContentColor,
                 )
@@ -190,7 +215,7 @@ fun CaptureModeCarousel(
             clipPath(path = insidePill) {
                 drawLabels(
                     metrics = metrics,
-                    scroll = scroll.value,
+                    scroll = scroll,
                     centreX = centreX,
                     color = selectedContentColor,
                 )
@@ -199,6 +224,10 @@ fun CaptureModeCarousel(
     }
 }
 
+/**
+ * Paints every label in a single [color], positioned for the given [scroll]. Called once per
+ * clip region, so the caller decides which half of the strip this pass ends up colouring.
+ */
 private fun DrawScope.drawLabels(
     metrics: CarouselMetrics,
     scroll: Float,
@@ -227,9 +256,12 @@ private class CarouselMetrics(
 ) {
     val labelHeightPx: Int = labels.maxOf { it.size.height }
 
-    /** Width of the pill were each mode selected: its label plus the pill's own padding. */
+    /** Width the pill would take were each mode selected: its label plus the pill's padding. */
     private val slotWidths = labels.map { it.size.width + horizontalPaddingPx * 2f }
 
+    // Spacing is measured between slot edges, so consecutive centres are half of each neighbouring
+    // slot apart plus the gap. Labels of differing widths then sit evenly spaced rather than
+    // evenly pitched.
     private val centres = FloatArray(labels.size).apply {
         for (index in 1 until size) {
             this[index] = this[index - 1] +
@@ -244,8 +276,8 @@ private class CarouselMetrics(
     fun nearestIndexTo(value: Float): Int = centres.indices.minBy { abs(centres[it] - value) }
 
     /**
-     * Pill width for an arbitrary scroll position, interpolated between the two modes it sits
-     * between so the highlight grows into the next label's width as the strip moves.
+     * Pill width at an arbitrary scroll position, interpolated between the slots either side of
+     * it so the highlight grows into the next label's width as the strip moves.
      */
     fun pillWidthAt(scroll: Float): Float {
         val clamped = clamp(scroll)
