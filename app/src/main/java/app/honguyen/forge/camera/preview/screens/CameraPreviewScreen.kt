@@ -4,8 +4,19 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -17,6 +28,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import app.honguyen.forge.camera.preview.ui.CameraPreview
+import app.honguyen.forge.designsystem.theme.ForgeTheme
+import app.honguyen.forge.designsystem.theme.icons.CameraFlip
+import app.honguyen.forge.designsystem.uikit.buttons.ShutterButton
+import app.honguyen.forge.designsystem.uikit.buttons.SpinToggleButton
+
+private const val TOP_BAR_HEIGHT_FRACTION = 0.075f
+private const val PREVIEW_HEIGHT_FRACTION = 0.64f
+private const val CONTROLS_HEIGHT_FRACTION = 1f - TOP_BAR_HEIGHT_FRACTION - PREVIEW_HEIGHT_FRACTION
 
 /**
  * Screen that gates the live camera preview behind the runtime camera permission,
@@ -35,17 +54,77 @@ fun CameraPreviewScreen(modifier: Modifier = Modifier) {
     ) { granted -> cameraGranted = granted }
 
     LaunchedEffect(Unit) {
-        if (!cameraGranted) permissionLauncher.launch(Manifest.permission.CAMERA)
+        if (!cameraGranted) {
+            permissionLauncher.launch(Manifest.permission.CAMERA)
+        }
     }
 
-    if (cameraGranted) {
-        CameraPreview(modifier = modifier.fillMaxSize())
-    } else {
-        Box(
-            modifier = modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text("Camera permission required")
+    Surface(
+        modifier = modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.surface,
+    ) {
+        if (cameraGranted) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(TOP_BAR_HEIGHT_FRACTION),
+                ) {
+                }
+                CameraPreview(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(PREVIEW_HEIGHT_FRACTION),
+                )
+                CameraControls(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight(),
+                )
+            }
+        } else {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("Camera permission required")
+            }
         }
+    }
+}
+
+@Composable
+private fun CameraControls(modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        CameraControlsRow1(
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight()
+                .padding(
+                    horizontal = ForgeTheme.dimensions.size14x,
+                    vertical = ForgeTheme.dimensions.size7x,
+                ),
+        )
+    }
+}
+
+@Composable
+private fun CameraControlsRow1(modifier: Modifier = Modifier) {
+    var lensFacingFront by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Spacer(modifier = Modifier.size(ForgeTheme.dimensions.size12x))
+        ShutterButton(onClick = {})
+        SpinToggleButton(
+            imageVector = ForgeTheme.icons.CameraFlip,
+            checked = lensFacingFront,
+            onCheckedChange = { lensFacingFront = it },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }

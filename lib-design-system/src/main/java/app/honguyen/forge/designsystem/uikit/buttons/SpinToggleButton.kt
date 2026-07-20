@@ -61,7 +61,7 @@ fun SpinToggleButton(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     contentDescription: String? = null,
-    size: Dp = ForgeTheme.dimensions.size12x,
+    size: Dp = ForgeTheme.dimensions.size13x,
     shape: Shape = MaterialTheme.shapes.small,
     containerColor: Color = Color.Transparent,
     contentColor: Color = LocalContentColor.current,
