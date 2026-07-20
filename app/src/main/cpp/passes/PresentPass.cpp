@@ -15,8 +15,7 @@ namespace forge {
 // Fragment shader: sample the scene texture. A regular sampler2D this time (not
 // samplerExternalOES) — the source is an ordinary RGBA8 texture produced by an
 // earlier pass, not a camera buffer needing YUV conversion.
-static constexpr std::string_view kFragSrc = R"GLSL(
-    #version 300 es
+static constexpr std::string_view kFragSrc = R"GLSL(#version 300 es
     precision mediump float;     // medium float precision, the usual mobile default for color math
     in vec2 vTexCoord;           // interpolated UV from the vertex shader, 0..1
     uniform sampler2D uTexture;  // the scene texture to present (last pass's output)

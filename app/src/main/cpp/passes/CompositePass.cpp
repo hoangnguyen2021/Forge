@@ -15,8 +15,7 @@ namespace forge {
 // Fragment shader: the merge step of the background blur. Three plain sampler2D
 // inputs (not OES — all three are RGBA8/R8 textures from earlier passes) and a
 // per-pixel mix between the sharp and blurred frames driven by the mask.
-static constexpr std::string_view kFragSrc = R"GLSL(
-    #version 300 es
+static constexpr std::string_view kFragSrc = R"GLSL(#version 300 es
     precision mediump float;     // medium float precision, the usual mobile default for color math
     in vec2 vTexCoord;           // full-res UV from the passthrough vertex stage, 0..1
     uniform sampler2D uSharp;    // the crisp camera frame

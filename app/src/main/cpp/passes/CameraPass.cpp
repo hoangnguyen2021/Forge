@@ -14,8 +14,7 @@ namespace forge {
 
 // Vertex shader: runs once per quad corner. It places the corner on screen and
 // computes the UV the fragment shader will sample the camera image at.
-static constexpr std::string_view kVertSrc = R"GLSL(
-    #version 300 es
+static constexpr std::string_view kVertSrc = R"GLSL(#version 300 es
 
     // --- Attributes: per-vertex inputs, one value per corner. The location slots
     // must match what FullScreenQuad::draw feeds them (see FullScreenQuad for the
@@ -51,8 +50,7 @@ static constexpr std::string_view kVertSrc = R"GLSL(
 
 // Fragment shader: runs once per pixel, samples the camera texture at the
 // interpolated UV, and writes the color to the framebuffer.
-static constexpr std::string_view kFragSrc = R"GLSL(
-    #version 300 es
+static constexpr std::string_view kFragSrc = R"GLSL(#version 300 es
 
     // Required to use samplerExternalOES (the sampler type for an OES texture).
     #extension GL_OES_EGL_image_external_essl3 : require

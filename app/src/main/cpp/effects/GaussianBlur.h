@@ -32,8 +32,7 @@ namespace forge {
  */
 
 // Horizontal half of the separable Gaussian: steps along x (uTexelSize.x).
-inline constexpr std::string_view kBlurHFragSrc = R"GLSL(
-    #version 300 es
+inline constexpr std::string_view kBlurHFragSrc = R"GLSL(#version 300 es
     precision mediump float;     // medium float precision, the usual mobile default for color math
     in vec2 vTexCoord;           // interpolated UV from the vertex shader, 0..1
     uniform sampler2D uTexture;  // the input image to blur (previous pass's output)
@@ -62,8 +61,7 @@ inline constexpr std::string_view kBlurHFragSrc = R"GLSL(
 
 // Vertical half of the separable Gaussian: steps along y (uTexelSize.y), blurring the
 // already horizontally-blurred image into the final 2D result.
-inline constexpr std::string_view kBlurVFragSrc = R"GLSL(
-    #version 300 es
+inline constexpr std::string_view kBlurVFragSrc = R"GLSL(#version 300 es
     precision mediump float;     // medium float precision, the usual mobile default for color math
     in vec2 vTexCoord;           // interpolated UV from the vertex shader, 0..1
     uniform sampler2D uTexture;  // the horizontally-blurred image (previous pass's output)
