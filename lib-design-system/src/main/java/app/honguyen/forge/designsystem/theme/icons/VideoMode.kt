@@ -44,10 +44,10 @@ val Icons.VideoMode: ImageVector
 
                 // Down the right edge to the neck, out along the flaring lens, and back in.
                 verticalLineTo(LENS_NECK_TOP)
-                lineTo(19.5f, 8.833f)
+                lineTo(LENS_TIP_X, LENS_TIP_TOP)
                 quadTo(LENS_RIGHT, LENS_FLARE_TOP, LENS_RIGHT, LENS_FLARE_TOP + LENS_CORNER_CUT)
                 verticalLineTo(LENS_FLARE_BOTTOM - LENS_CORNER_CUT)
-                quadTo(LENS_RIGHT, LENS_FLARE_BOTTOM, 19.5f, 15.167f)
+                quadTo(LENS_RIGHT, LENS_FLARE_BOTTOM, LENS_TIP_X, LENS_TIP_BOTTOM)
                 lineTo(BODY_RIGHT, LENS_NECK_BOTTOM)
 
                 // Down to the bottom-right corner, across the bottom, and up the left side.
@@ -88,18 +88,30 @@ val Icons.VideoMode: ImageVector
 
 private var videoModeCache: ImageVector? = null
 
-private const val BODY_LEFT = 4.0f
-private const val BODY_RIGHT = 17.0f
-private const val BODY_TOP = 5.5f
-private const val BODY_BOTTOM = 18.5f
-private const val BODY_CORNER_RADIUS = 1.5f
+// A solid mass, so it sits on the 20x16 horizontal keyline rather than filling the live area:
+// body plus lens spans x 2..22, and the body squares off the full 16 of height.
+private const val BODY_LEFT = 2.0f
+private const val BODY_RIGHT = 18.0f
+private const val BODY_TOP = 4.0f
+private const val BODY_BOTTOM = 20.0f
+private const val BODY_CORNER_RADIUS = 2.0f
 
-private const val LENS_RIGHT = 20.0f
-private const val LENS_NECK_TOP = 10.5f
-private const val LENS_NECK_BOTTOM = 13.5f
-private const val LENS_FLARE_TOP = 8.5f
-private const val LENS_FLARE_BOTTOM = 15.5f
-private const val LENS_CORNER_CUT = 0.6f
+private const val LENS_RIGHT = 22.0f
+private const val LENS_NECK_TOP = 10.0f
+private const val LENS_NECK_BOTTOM = 14.0f
+private const val LENS_FLARE_TOP = 8.0f
+private const val LENS_FLARE_BOTTOM = 16.0f
+
+// The lens tip is rounded by a quad through the corner it would otherwise make. The cut is
+// how far short of that corner the curve ends; the diagonal stops short by its own amount,
+// and LENS_TIP_X rides the neck-to-flare slope to wherever that leaves it.
+private const val LENS_CORNER_CUT = 0.75f
+private const val LENS_DIAGONAL_CUT = 0.4f
+private const val LENS_FLARE_RISE = LENS_NECK_TOP - LENS_FLARE_TOP
+private const val LENS_TIP_X =
+    LENS_RIGHT - (LENS_RIGHT - BODY_RIGHT) * (LENS_DIAGONAL_CUT / LENS_FLARE_RISE)
+private const val LENS_TIP_TOP = LENS_FLARE_TOP + LENS_DIAGONAL_CUT
+private const val LENS_TIP_BOTTOM = LENS_FLARE_BOTTOM - LENS_DIAGONAL_CUT
 
 @Preview(name = "VideoMode", showBackground = true)
 @Composable

@@ -76,6 +76,7 @@ class ForgeIconGoldenTest(
             listOf(
                 arrayOf("CameraFlip", ForgeTheme.icons.CameraFlip),
                 arrayOf("CameraSettings", ForgeTheme.icons.CameraSettings),
+                arrayOf("Debug", ForgeTheme.icons.Debug),
                 arrayOf("FramePerson", ForgeTheme.icons.FramePerson),
                 arrayOf("PictureMode", ForgeTheme.icons.PictureMode),
                 arrayOf("Tune", ForgeTheme.icons.Tune),
