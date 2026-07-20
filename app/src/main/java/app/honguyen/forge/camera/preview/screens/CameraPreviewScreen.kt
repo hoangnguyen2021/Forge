@@ -9,10 +9,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.displayCutoutPadding
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -43,9 +44,7 @@ import app.honguyen.forge.designsystem.uikit.carousels.CaptureModeCarousel
 import app.honguyen.forge.designsystem.uikit.switches.CameraMode
 import app.honguyen.forge.designsystem.uikit.switches.CameraModeSwitch
 
-private const val TOP_BAR_HEIGHT_FRACTION = 0.075f
-private const val PREVIEW_HEIGHT_FRACTION = 0.64f
-private const val CONTROLS_HEIGHT_FRACTION = 1f - TOP_BAR_HEIGHT_FRACTION - PREVIEW_HEIGHT_FRACTION
+private const val PREVIEW_ASPECT_RATIO = 3f / 4f
 
 /**
  * Screen that gates the live camera preview behind the runtime camera permission,
@@ -80,17 +79,20 @@ fun CameraPreviewScreen(modifier: Modifier = Modifier) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .fillMaxHeight(TOP_BAR_HEIGHT_FRACTION)
+                        .height(ForgeTheme.dimensions.size14x)
                         // The status bar is hidden on this screen, so only the cutout still
                         // intrudes here; padding for status bars would resolve to zero.
                         .displayCutoutPadding(),
                 ) {
                 }
-                CameraPreview(
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .fillMaxHeight(PREVIEW_HEIGHT_FRACTION),
-                )
+                        .weight(1f),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CameraPreview(modifier = Modifier.aspectRatio(PREVIEW_ASPECT_RATIO))
+                }
                 CameraControls(
                     modifier = Modifier
                         .fillMaxWidth()
