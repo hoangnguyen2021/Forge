@@ -29,9 +29,9 @@ val Icons.Debug: ImageVector
             viewportWidth = IconViewportSize,
             viewportHeight = IconViewportSize,
         ).apply {
-            // Traced at bug.svg's own proportions, then shrunk about the viewport centre onto
-            // the 20x20 live area the rest of the set draws within. Doubling the 12x12 viewBox
-            // alone leaves the glyph nearly edge to edge, reading a size larger than its peers.
+            // bug.svg's 12x12 viewBox doubles onto the 24x24 viewport all but edge to edge, so
+            // the trace keeps the source's proportions and this group holds it to the 20x20
+            // live area — an open outline glyph, which fills that rather than the square keyline.
             group(
                 pivotX = GLYPH_CENTRE,
                 pivotY = GLYPH_CENTRE,

@@ -15,7 +15,7 @@ where the viewport is 24×24 (`IconViewportSize`) and ships at 24dp (`IconDefaul
 | Viewport / trim area | 24 × 24 |
 | Live area | 20 × 20, inset 2 on every side (x and y run 2..22) |
 | Padding | 2 minimum — nothing but a deliberate bleed reaches the trim edge |
-| Stroke weight | 2 nominal (see `Tune.kt`'s `THICKNESS`) |
+| Stroke weight | 2 nominal |
 | Corner radius | 2 on exterior corners, unless the shape argues otherwise |
 
 Within the live area, size is set by **how solid the glyph is**, not by the live area alone —
@@ -61,8 +61,44 @@ fitting transform. Each file holds, in order:
 4. `@Preview` composable rendering through `ForgeTheme` at `dimensions.size12x`.
 
 The path is filled `SolidColor(Color.Black)`; `Icon`'s `tint` replaces it at the call site.
-Comment the *geometry* — winding direction, why a clip exists, how a shape was fitted — not
-the Compose calls, which speak for themselves.
+
+## Comments
+
+The coordinates say where an edge is. Only a comment says why it is there, which way a run is
+wound, or what breaks when it moves — so the comments are part of the glyph, not decoration on
+it. `CameraSettings.kt` is the reference for the voice.
+
+**Write for the glyph as it stands, not for the change that produced it.** This is the rule
+that erodes first. An edit made in response to "make it smaller" should leave the file reading
+as though the icon were always that size. Nothing should record what the shape used to be, what
+was tried and rejected, or what a review asked for — git holds that, and a file that accumulates
+it turns into a changelog. In practice that means no *now*, *previously*, *changed to*,
+*no longer*, *instead of the old*, *as requested*.
+
+Earns a comment:
+
+- **Winding direction**, anywhere a non-zero fill depends on it — a hole punched, or two runs
+  unioned across a buried seam.
+- **The trace route**, one short line per leg, in the order the pen travels.
+- **Anything invisible at the call site**: why a clip exists rather than an outline, why a shape
+  is fitted with a `group`, why a flank stops short of the corner it is heading for.
+- **A constant whose value is a judgement**, carrying the number that justifies it — "at 26 the
+  teeth take 84% of the pitch, leaving 8 degrees of daylight" over "tuned by eye".
+
+Doesn't:
+
+- The Compose call itself. `close()` closes the path.
+- Restating a well-named constant back in prose.
+- Standard Kotlin or Compose idiom.
+
+Form: `/** … */` KDoc, expanded multi-line, on declarations — helper functions and properties;
+`//` inline, directly above the run it describes. Refer to constants by name. Present tense,
+impersonal, and sized to the thing being explained.
+
+**When editing an existing glyph, read the whole file's comments before writing any.** Fix the
+ones the edit invalidated in the same pass — a stale comment costs more than a missing one — and
+never leave a new comment sitting next to an older one it contradicts. Match the altitude and
+voice already in the file rather than the register of whatever prompted the change.
 
 ## Adding a glyph
 
