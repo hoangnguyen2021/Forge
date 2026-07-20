@@ -30,7 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import app.honguyen.forge.camera.preview.ui.CameraPreview
-import app.honguyen.forge.composeutils.systembars.HideStatusBarWhileVisible
+import app.honguyen.forge.composeutils.systembars.HideStatusBar
 import app.honguyen.forge.designsystem.theme.ForgeTheme
 import app.honguyen.forge.designsystem.theme.icons.CameraFlip
 import app.honguyen.forge.designsystem.theme.icons.CameraSettings
@@ -69,7 +69,7 @@ fun CameraPreviewScreen(modifier: Modifier = Modifier) {
         }
     }
 
-    HideStatusBarWhileVisible()
+    HideStatusBar()
 
     Surface(
         modifier = modifier.fillMaxSize(),
