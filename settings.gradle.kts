@@ -25,3 +25,4 @@ dependencyResolutionManagement {
 rootProject.name = "Forge"
 include(":app")
 include(":lib-design-system")
+include(":lib-compose-utils")

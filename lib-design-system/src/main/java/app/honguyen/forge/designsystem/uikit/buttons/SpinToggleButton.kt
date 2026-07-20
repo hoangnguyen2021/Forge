@@ -32,7 +32,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
-import app.honguyen.forge.designsystem.modifier.thenIfNotNull
+import app.honguyen.forge.composeutils.modifiers.thenIfNotNull
 import app.honguyen.forge.designsystem.theme.ForgeTheme
 import app.honguyen.forge.designsystem.theme.icons.CameraFlip
 

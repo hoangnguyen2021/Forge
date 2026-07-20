@@ -35,7 +35,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.util.lerp
-import app.honguyen.forge.designsystem.modifier.thenIfNotNull
+import app.honguyen.forge.composeutils.modifiers.thenIfNotNull
 import app.honguyen.forge.designsystem.theme.ForgeTheme
 import app.honguyen.forge.designsystem.theme.icons.CameraSettings
 import app.honguyen.forge.designsystem.theme.icons.Tune

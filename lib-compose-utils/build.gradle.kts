@@ -3,11 +3,10 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.detekt)
     alias(libs.plugins.ktlint)
-    alias(libs.plugins.paparazzi)
 }
 
 android {
-    namespace = "app.honguyen.forge.designsystem"
+    namespace = "app.honguyen.forge.composeutils"
     compileSdk {
         version = release(37)
     }
@@ -36,15 +35,11 @@ ktlint {
 }
 
 dependencies {
-    implementation(project(":lib-compose-utils"))
-
     api(platform(libs.androidx.compose.bom))
     api(libs.androidx.ui)
-    api(libs.androidx.ui.graphics)
-    api(libs.androidx.material3)
-    api(libs.androidx.ui.tooling.preview)
 
-    debugImplementation(libs.androidx.ui.tooling)
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.activity.compose)
 
     testImplementation(libs.junit)
 }

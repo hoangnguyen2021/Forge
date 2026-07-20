@@ -1,4 +1,4 @@
-package app.honguyen.forge.designsystem.modifier
+package app.honguyen.forge.composeutils.modifiers
 
 import androidx.compose.ui.Modifier
 

@@ -2,7 +2,6 @@ package app.honguyen.forge.camera.preview.screens
 
 import android.Manifest
 import android.content.pm.PackageManager
-import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -22,7 +21,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,10 +29,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import app.honguyen.forge.camera.preview.ui.CameraPreview
+import app.honguyen.forge.composeutils.systembars.HideStatusBarWhileVisible
 import app.honguyen.forge.designsystem.theme.ForgeTheme
 import app.honguyen.forge.designsystem.theme.icons.CameraFlip
 import app.honguyen.forge.designsystem.theme.icons.CameraSettings
@@ -111,30 +107,6 @@ fun CameraPreviewScreen(modifier: Modifier = Modifier) {
             ) {
                 Text("Camera permission required")
             }
-        }
-    }
-}
-
-/**
- * Hides the status bar for as long as this screen is composed, restoring it on the way out, and
- * leaves the navigation bar in place for gesture affordances. Following the platform camera apps,
- * the bar stays hidden until swiped for, and comes back as a transient overlay that draws over the
- * preview rather than resizing it.
- */
-@Composable
-private fun HideStatusBarWhileVisible() {
-    val window = LocalActivity.current?.window ?: return
-
-    DisposableEffect(window) {
-        val controller = WindowCompat.getInsetsController(window, window.decorView)
-        val previousBehavior = controller.systemBarsBehavior
-
-        controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        controller.hide(WindowInsetsCompat.Type.statusBars())
-
-        onDispose {
-            controller.show(WindowInsetsCompat.Type.statusBars())
-            controller.systemBarsBehavior = previousBehavior
         }
     }
 }
