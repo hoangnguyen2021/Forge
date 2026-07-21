@@ -5,6 +5,9 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.core.DataStoreFactory
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.dataStoreFile
+import app.honguyen.forge.coroutines.ApplicationScope
+import app.honguyen.forge.coroutines.Dispatcher
+import app.honguyen.forge.coroutines.ForgeDispatcher
 import app.honguyen.forge.datastore.proto.ForgeSettingsProto
 import app.honguyen.forge.datastore.serializer.ForgeSettingsSerializer
 import dagger.Module

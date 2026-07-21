@@ -51,10 +51,10 @@ ktlint {
 }
 
 dependencies {
-    // Both are exposed through this module's own API: DataStore<ForgeSettingsProto> names
-    // a DataStore type, and the generated proto classes extend the javalite runtime.
     api(libs.androidx.datastore)
     api(libs.protobuf.javalite)
+
+    implementation(project(":lib-coroutines"))
 
     implementation(libs.hilt.android)
     implementation(libs.timber)

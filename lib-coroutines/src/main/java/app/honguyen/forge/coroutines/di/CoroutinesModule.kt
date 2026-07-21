@@ -1,5 +1,8 @@
-package app.honguyen.forge.datastore.di
+package app.honguyen.forge.coroutines.di
 
+import app.honguyen.forge.coroutines.ApplicationScope
+import app.honguyen.forge.coroutines.Dispatcher
+import app.honguyen.forge.coroutines.ForgeDispatcher
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

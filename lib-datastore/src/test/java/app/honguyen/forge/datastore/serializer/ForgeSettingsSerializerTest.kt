@@ -36,11 +36,10 @@ class ForgeSettingsSerializerTest {
      * DataStore corruption handler acts on.
      */
     @Test(expected = CorruptionException::class)
-    fun `truncated input is reported as corruption`(): Unit =
-        runBlocking {
+    fun `truncated input is reported as corruption`() =
+        runBlocking<Unit> {
             val truncated = byteArrayOf(0x08)
 
             ForgeSettingsSerializer.readFrom(ByteArrayInputStream(truncated))
-            Unit
         }
 }

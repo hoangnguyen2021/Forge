@@ -1,4 +1,4 @@
-package app.honguyen.forge.datastore.di
+package app.honguyen.forge.coroutines
 
 import javax.inject.Qualifier
 
