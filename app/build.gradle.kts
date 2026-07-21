@@ -24,35 +24,18 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
+        // The engine is built in :feature-camera-preview, but ABI filtering is a packaging
+        // concern: without this the APK also picks up armeabi-v7a/x86 variants of native
+        // libs pulled in by dependencies.
         ndk {
             abiFilters += listOf("arm64-v8a", "x86_64")
         }
-
-        externalNativeBuild {
-            cmake {
-                // Build only our engine (and its deps); skip the LiteRT SDK test executables.
-                targets += "forge_engine"
-            }
-        }
     }
 
-    externalNativeBuild {
-        cmake {
-            path = file("src/main/cpp/CMakeLists.txt")
-            version = "3.22.1"
-        }
-    }
-
-    // Package the vendored LiteRT runtime (libLiteRt.so, per ABI) into the APK so the
-    // dynamic linker can find it at load time.
-    sourceSets {
-        getByName("main") {
-            jniLibs.directories.add("src/main/cpp/third_party/litert/jni")
-        }
-    }
-
-    // Keep the .tflite model uncompressed so it can be memory-mapped / read directly
-    // from the APK rather than inflated into memory.
+    // The model asset itself lives in :feature-camera-preview, but APK packaging is the
+    // app module's job — assets merged in from a library are still compressed according
+    // to this setting. Keeping the .tflite uncompressed lets it be memory-mapped / read
+    // directly from the APK rather than inflated into memory.
     androidResources {
         noCompress.add("tflite")
     }
@@ -95,6 +78,9 @@ dependencies {
     // Design system (theme + shared UI foundations)
     implementation(project(":lib-design-system"))
     implementation(project(":lib-compose-utils"))
+
+    // Features
+    implementation(project(":feature-camera-preview"))
 
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.core.ktx)

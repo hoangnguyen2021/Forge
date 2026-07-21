@@ -15,6 +15,32 @@ android {
         minSdk = 24
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        ndk {
+            abiFilters += listOf("arm64-v8a", "x86_64")
+        }
+
+        externalNativeBuild {
+            cmake {
+                // Build only our engine (and its deps); skip the LiteRT SDK test executables.
+                targets += "forge_engine"
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
+
+    // Package the vendored LiteRT runtime (libLiteRt.so, per ABI) into the AAR so the
+    // dynamic linker can find it at load time.
+    sourceSets {
+        getByName("main") {
+            jniLibs.directories.add("src/main/cpp/third_party/litert/jni")
+        }
     }
 
     compileOptions {
@@ -41,8 +67,18 @@ dependencies {
     implementation(project(":lib-compose-utils"))
 
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.activity.compose)
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.ui)
+    implementation(libs.androidx.ui.graphics)
+    implementation(libs.androidx.ui.tooling.preview)
+    implementation(libs.androidx.material3)
+
+    // Logging
+    implementation(libs.timber)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
+    debugImplementation(libs.androidx.ui.tooling)
 }
