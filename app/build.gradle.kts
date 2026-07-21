@@ -22,7 +22,9 @@ android {
         versionCode = 1
         versionName = "1.0"
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Hilt needs its own Application subclass in instrumented tests; ForgeTestRunner
+        // swaps it in for ForgeApp.
+        testInstrumentationRunner = "app.honguyen.forge.ForgeTestRunner"
 
         // The engine is built in :feature-camera-preview, but ABI filtering is a packaging
         // concern: without this the APK also picks up armeabi-v7a/x86 variants of native
@@ -82,6 +84,9 @@ dependencies {
     // Features
     implementation(project(":feature-camera-preview"))
 
+    // Data
+    implementation(project(":lib-data"))
+
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -116,6 +121,8 @@ dependencies {
     implementation(libs.timber)
 
     testImplementation(libs.junit)
+    androidTestImplementation(libs.hilt.android.testing)
+    kspAndroidTest(libs.hilt.compiler)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

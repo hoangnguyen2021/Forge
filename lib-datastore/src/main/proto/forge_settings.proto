@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+option java_package = "app.honguyen.forge.datastore.proto";
+option java_multiple_files = true;
+
+// App-wide settings. Field numbers are permanent: never reuse or renumber one, or an
+// existing on-disk store will decode into the wrong field.
+message ForgeSettingsProto {
+  ThemeProto theme = 1;
+}
+
+// Every proto3 enum needs a zero value, and that is what an unset field decodes to. The
+// *_UNSPECIFIED variant therefore means "never written" rather than naming a real state,
+// so the mapping layer folds it into the domain default on the way out.
+enum ThemeProto {
+  THEME_UNSPECIFIED = 0;
+  THEME_LIGHT = 1;
+  THEME_DARK = 2;
+}
