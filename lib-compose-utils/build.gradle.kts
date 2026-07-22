@@ -36,7 +36,7 @@ ktlint {
 
 dependencies {
     api(platform(libs.androidx.compose.bom))
-    api(libs.androidx.ui)
+    api(libs.androidx.compose.ui)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

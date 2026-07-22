@@ -39,12 +39,9 @@ dependencies {
     implementation(project(":lib-compose-utils"))
 
     api(platform(libs.androidx.compose.bom))
-    api(libs.androidx.ui)
-    api(libs.androidx.ui.graphics)
-    api(libs.androidx.material3)
-    api(libs.androidx.ui.tooling.preview)
+    api(libs.bundles.compose.ui)
 
-    debugImplementation(libs.androidx.ui.tooling)
+    debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.junit)
 }

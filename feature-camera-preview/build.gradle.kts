@@ -69,16 +69,12 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.ui)
-    implementation(libs.androidx.ui.graphics)
-    implementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.androidx.material3)
+    implementation(libs.bundles.compose.ui)
 
     // Logging
     implementation(libs.timber)
 
     testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(libs.androidx.junit)
-    debugImplementation(libs.androidx.ui.tooling)
+    androidTestImplementation(libs.bundles.androidx.instrumented.test)
+    debugImplementation(libs.androidx.compose.ui.tooling)
 }

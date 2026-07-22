@@ -93,10 +93,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.ui)
-    implementation(libs.androidx.ui.graphics)
-    implementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.androidx.material3)
+    implementation(libs.bundles.compose.ui)
 
     // Splashscreen
     implementation(libs.androidx.core.splashscreen)
@@ -111,11 +108,11 @@ dependencies {
     ksp(libs.hilt.compiler)
 
     // Navigation
-    implementation(libs.androidx.compose.navigation)
+    implementation(libs.androidx.navigation.compose)
     implementation(libs.kotlinx.serialization.json)
 
     // Allow use of java.time.Instant below API 26
-    coreLibraryDesugaring(libs.desugarJdkLibs)
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
 
     // Logging
     implementation(libs.timber)
@@ -123,10 +120,9 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.hilt.android.testing)
     kspAndroidTest(libs.hilt.compiler)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.bundles.androidx.instrumented.test)
     androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.ui.test.junit4)
-    debugImplementation(libs.androidx.ui.tooling)
-    debugImplementation(libs.androidx.ui.test.manifest)
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    debugImplementation(libs.androidx.compose.ui.tooling)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
