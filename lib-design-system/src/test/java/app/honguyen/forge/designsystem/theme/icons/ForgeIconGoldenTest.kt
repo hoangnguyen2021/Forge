@@ -75,8 +75,11 @@ class ForgeIconGoldenTest(
         fun icons(): List<Array<Any>> =
             listOf(
                 arrayOf("CameraFlip", ForgeTheme.icons.CameraFlip),
+                arrayOf("CameraFlip2", ForgeTheme.icons.CameraFlip2),
                 arrayOf("CameraSettings", ForgeTheme.icons.CameraSettings),
                 arrayOf("Debug", ForgeTheme.icons.Debug),
+                arrayOf("FlashOff", ForgeTheme.icons.FlashOff),
+                arrayOf("FlashOn", ForgeTheme.icons.FlashOn),
                 arrayOf("FramePerson", ForgeTheme.icons.FramePerson),
                 arrayOf("PictureMode", ForgeTheme.icons.PictureMode),
                 arrayOf("Tune", ForgeTheme.icons.Tune),
