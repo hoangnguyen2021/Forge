@@ -63,18 +63,27 @@ ktlint {
 }
 
 dependencies {
-    implementation(project(":lib-design-system"))
+    // Design system (theme + shared UI foundations)
     implementation(project(":lib-compose-utils"))
+    implementation(project(":lib-design-system"))
 
+    // AndroidX foundations
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.activity.compose)
+
+    // Compose
     implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.activity.compose)
     implementation(libs.bundles.compose.ui)
 
     // Logging
     implementation(libs.timber)
 
+    // Unit tests
     testImplementation(libs.junit)
+
+    // Instrumented tests
     androidTestImplementation(libs.bundles.androidx.instrumented.test)
+
+    // Debug tooling
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

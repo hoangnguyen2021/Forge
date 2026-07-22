@@ -38,10 +38,11 @@ ktlint {
 dependencies {
     implementation(project(":lib-compose-utils"))
 
+    // Compose — api, so consumers of the theme inherit its UI surface.
     api(platform(libs.androidx.compose.bom))
     api(libs.bundles.compose.ui)
 
-    debugImplementation(libs.androidx.compose.ui.tooling)
-
     testImplementation(libs.junit)
+
+    debugImplementation(libs.androidx.compose.ui.tooling)
 }

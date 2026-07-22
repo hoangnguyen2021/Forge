@@ -37,6 +37,7 @@ dependencies {
     // domain models, never the generated proto types behind them.
     implementation(project(":lib-datastore"))
 
+    // DI - Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 

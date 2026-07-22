@@ -78,8 +78,8 @@ ktlint {
 
 dependencies {
     // Design system (theme + shared UI foundations)
-    implementation(project(":lib-design-system"))
     implementation(project(":lib-compose-utils"))
+    implementation(project(":lib-design-system"))
 
     // Features
     implementation(project(":feature-camera-preview"))
@@ -87,16 +87,21 @@ dependencies {
     // Data
     implementation(project(":lib-data"))
 
+    // AndroidX foundations
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.lifecycle.process)
-    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+
+    // Compose
     implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.activity.compose)
     implementation(libs.bundles.compose.ui)
 
-    // Splashscreen
-    implementation(libs.androidx.core.splashscreen)
+    // Navigation — type-safe routes are serialized, hence kotlinx-serialization.
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.kotlinx.serialization.json)
 
     // Database - Room
     implementation(libs.room.ktx)
@@ -107,22 +112,23 @@ dependencies {
     implementation(libs.bundles.hilt)
     ksp(libs.hilt.compiler)
 
-    // Navigation
-    implementation(libs.androidx.navigation.compose)
-    implementation(libs.kotlinx.serialization.json)
+    // Logging
+    implementation(libs.timber)
 
     // Allow use of java.time.Instant below API 26
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 
-    // Logging
-    implementation(libs.timber)
-
+    // Unit tests
     testImplementation(libs.junit)
-    androidTestImplementation(libs.hilt.android.testing)
-    kspAndroidTest(libs.hilt.compiler)
-    androidTestImplementation(libs.bundles.androidx.instrumented.test)
+
+    // Instrumented tests
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
-    debugImplementation(libs.androidx.compose.ui.tooling)
+    androidTestImplementation(libs.bundles.androidx.instrumented.test)
+    androidTestImplementation(libs.hilt.android.testing)
+    kspAndroidTest(libs.hilt.compiler)
+
+    // Debug tooling
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+    debugImplementation(libs.androidx.compose.ui.tooling)
 }

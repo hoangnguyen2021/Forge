@@ -69,14 +69,18 @@ ktlint {
 }
 
 dependencies {
+    implementation(project(":lib-coroutines"))
+
+    // Persistence — api: these types appear in this module's own public surface.
     api(libs.androidx.datastore)
     api(libs.protobuf.javalite)
 
-    implementation(project(":lib-coroutines"))
-
+    // DI - Hilt
     implementation(libs.hilt.android)
-    implementation(libs.timber)
     ksp(libs.hilt.compiler)
+
+    // Logging
+    implementation(libs.timber)
 
     testImplementation(libs.junit)
 }
