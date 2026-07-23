@@ -78,11 +78,13 @@ class ForgeIconGoldenTest(
                 arrayOf("CameraFlip2", ForgeTheme.icons.CameraFlip2),
                 arrayOf("CameraSettings", ForgeTheme.icons.CameraSettings),
                 arrayOf("Debug", ForgeTheme.icons.Debug),
+                arrayOf("Filter", ForgeTheme.icons.Filter),
                 arrayOf("FlashOff", ForgeTheme.icons.FlashOff),
                 arrayOf("FlashOn", ForgeTheme.icons.FlashOn),
                 arrayOf("FramePerson", ForgeTheme.icons.FramePerson),
                 arrayOf("PictureMode", ForgeTheme.icons.PictureMode),
                 arrayOf("Sound", ForgeTheme.icons.Sound),
+                arrayOf("Timer", ForgeTheme.icons.Timer),
                 arrayOf("Tune", ForgeTheme.icons.Tune),
                 arrayOf("VideoMode", ForgeTheme.icons.VideoMode),
             )
