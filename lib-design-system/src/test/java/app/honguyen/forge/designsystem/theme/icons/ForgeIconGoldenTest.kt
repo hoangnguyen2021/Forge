@@ -82,6 +82,7 @@ class ForgeIconGoldenTest(
                 arrayOf("FlashOn", ForgeTheme.icons.FlashOn),
                 arrayOf("FramePerson", ForgeTheme.icons.FramePerson),
                 arrayOf("PictureMode", ForgeTheme.icons.PictureMode),
+                arrayOf("Sound", ForgeTheme.icons.Sound),
                 arrayOf("Tune", ForgeTheme.icons.Tune),
                 arrayOf("VideoMode", ForgeTheme.icons.VideoMode),
             )
