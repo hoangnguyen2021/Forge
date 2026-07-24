@@ -82,6 +82,7 @@ class ForgeIconGoldenTest(
                 arrayOf("FlashOff", ForgeTheme.icons.FlashOff),
                 arrayOf("FlashOn", ForgeTheme.icons.FlashOn),
                 arrayOf("FramePerson", ForgeTheme.icons.FramePerson),
+                arrayOf("Gallery", ForgeTheme.icons.Gallery),
                 arrayOf("Grid", ForgeTheme.icons.Grid),
                 arrayOf("PictureMode", ForgeTheme.icons.PictureMode),
                 arrayOf("Retouch", ForgeTheme.icons.Retouch),
