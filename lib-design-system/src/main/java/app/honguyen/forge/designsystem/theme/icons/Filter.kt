@@ -111,8 +111,9 @@ private const val STROKE_WIDTH = 1.5f
 private const val HALF_TURN = 180f
 private const val FULL_TURN = 360f
 
-// Enough to keep every sweep under a half turn for any spacing that leaves a ring recognisable:
-// the arc that survives runs to 303 degrees at the spacing below, and past 360 at none.
+// Enough to keep every sweep under a half turn at any spacing: what survives of a ring is 303
+// degrees at the spacing below and approaches a full turn as the rings come apart, so thirds
+// top out at 120.
 private const val ARC_SEGMENTS = 3f
 private val DEGREES_TO_RADIANS = PI.toFloat() / HALF_TURN
 

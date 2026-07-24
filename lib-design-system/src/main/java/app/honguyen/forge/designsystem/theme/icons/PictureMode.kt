@@ -133,14 +133,22 @@ val Icons.PictureMode: ImageVector
 
 private var pictureModeCache: ImageVector? = null
 
+// A solid mass, so it sits on the 18 square keyline rather than filling the live area. The body
+// spans the 18 across outright; down, [TOP] is only where the body's own shoulders start, and it
+// is the bump standing on 3 that carries the ink the rest of the way to 18 tall.
 private const val LEFT = 3.0f
 private const val RIGHT = 21.0f
 private const val TOP = 4.25f
 private const val BOTTOM = 21.0f
 private const val CORNER_RADIUS = 1.5f
 
+// The lens centers on the body rather than the glyph: [TOP] excludes the bump, so this sits a
+// little below 12 and leaves the ring looking square in the body it is set into.
 private const val LENS_CENTER_X = 12f
 private const val LENS_CENTER_Y = (TOP + BOTTOM) / 2f
+
+// The two together are the ring's wall, the span between them: a full unit, against a body 16.75
+// deep, is what keeps the ring from closing to a disc at 24dp.
 private const val LENS_OUTER_RADIUS = 4.5f
 private const val LENS_INNER_RADIUS = 3.5f
 

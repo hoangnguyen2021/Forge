@@ -33,8 +33,8 @@ val Icons.Debug: ImageVector
             // the trace keeps the source's proportions and this group holds it to the 20x20
             // live area — an open outline glyph, which fills that rather than the square keyline.
             group(
-                pivotX = GLYPH_CENTRE,
-                pivotY = GLYPH_CENTRE,
+                pivotX = GLYPH_CENTER,
+                pivotY = GLYPH_CENTER,
                 scaleX = LIVE_AREA_FIT,
                 scaleY = LIVE_AREA_FIT,
             ) {
@@ -118,7 +118,7 @@ val Icons.Debug: ImageVector
 
 private var debugCache: ImageVector? = null
 
-private const val GLYPH_CENTRE = IconViewportSize / 2f
+private const val GLYPH_CENTER = IconViewportSize / 2f
 
 // The traced glyph is inset by an eighth of a unit either side of bug.svg's 12x12 viewBox, so
 // doubled it spans 23.5. The set's live area is 20, inset 2 from the 24 viewport.

@@ -29,6 +29,9 @@ val Icons.FramePerson: ImageVector
             viewportHeight = IconViewportSize,
         ).apply {
             path(fill = SolidColor(Color.Black)) {
+                // Head, then its counter wound back the other way so a non-zero fill reads the
+                // second as a hole in the first. Both are quarter-by-quarter traces of a circle
+                // rather than arcs, which is the source's own construction.
                 moveTo(12f, 12f)
                 quadTo(10.73f, 12f, 9.86f, 11.14f)
                 reflectiveQuadTo(9f, 9f)
@@ -49,6 +52,9 @@ val Icons.FramePerson: ImageVector
                 quadToRelative(0f, 0.42f, 0.29f, 0.71f)
                 reflectiveQuadTo(12f, 10f)
                 close()
+                // Shoulders, and their counter after it: a bust squared off at the bottom, its
+                // top edge rising to the shoulder line either side of the neck. The same winding
+                // rule opens this one out as well.
                 moveTo(6f, 18f)
                 verticalLineTo(16.1f)
                 quadTo(6f, 15.58f, 6.26f, 15.11f)
@@ -78,6 +84,10 @@ val Icons.FramePerson: ImageVector
                 reflectiveQuadToRelative(2f, 0f)
                 quadToRelative(1.03f, 0f, 2f, 0f)
                 close()
+                // The four corner brackets, each an L of the frame with its outer corner rounded
+                // and its inner one square. They run bottom-left, top-left, bottom-right,
+                // top-right, and the gaps between them are the frame — there is no rectangle
+                // here for them to be cut out of.
                 moveTo(4f, 22f)
                 quadTo(3.18f, 22f, 2.59f, 21.41f)
                 reflectiveQuadTo(2f, 20f)

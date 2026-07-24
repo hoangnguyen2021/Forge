@@ -152,19 +152,17 @@ private const val TIP_COUNT = 4
 private val DEGREES_TO_RADIANS = PI.toFloat() / HALF_TURN
 
 // The head sizes everything else, so it is the one measure taken by eye. At 3.42 the sparkles
-// carry the ink out to the full 20 of live area across and the bust takes it to just under 19
-// down.
+// carry the ink out to the full 20 of live area across, and the bust takes it to 18.7 down.
 private const val HEAD_RADIUS = 3.42f
 private const val HEAD_INK_RADIUS = HEAD_RADIUS + HALF_STROKE
 private const val HEAD_CENTER_X = GLYPH_CENTER
 
-// The bust. user.svg draws it 1.718 head radii across by 1.4 down, hung 3 below; this one is
-// broader and deeper than that, and hangs a little further.
+// The bust, an ellipse hung below the head and measured in head radii like everything else here.
 //
-// The three move together, since all a bigger arch does is climb toward the chin: the drop has
-// to give back what the depth adds or the two collide. What is left over is the gap, and at
-// these three it comes to 1.24 — under the head's own stroke, close enough to read as one figure
-// rather than two shapes stacked, and still daylight enough that the head reads as a head.
+// The three are one setting, not three: depth climbs toward the chin as fast as the drop lowers
+// it, so the gap under the chin is what the two of them leave over. At these it comes to 1.24,
+// under the head's own stroke — close enough that head and shoulders read as one figure rather
+// than two shapes stacked, open enough that the chin still has daylight beneath it.
 private const val SHOULDER_DROP = 3.45f * HEAD_RADIUS
 private const val SHOULDER_RADIUS_X = 2f * HEAD_RADIUS
 private const val SHOULDER_RADIUS_Y = 1.65f * HEAD_RADIUS
@@ -175,14 +173,13 @@ private const val SHOULDER_RADIUS_Y = 1.65f * HEAD_RADIUS
 private const val SPARKLE_TIP = 0.6f * HEAD_INK_RADIUS
 
 // Where the sparkles sit: two head radii out from the head's center, one up and to the right and
-// one down and to the left. Two radii is what clears the head, leaving the nearer tip of each a
-// stroke and a half off it.
+// one down and to the left. Two radii is what clears the head, leaving the nearer tip of each
+// 1.67 off it.
 //
-// The bearing then trades the glyph's height against its width, the pair being what each is
-// measured across. At 26 it sits nearer level than diagonal, so the sparkles flank the head
-// rather than corner it, and the ink runs the full 20 across but only about 17 down. Swinging
-// it back toward the diagonal is what would square the glyph up, at the cost of dropping the
-// falling sparkle toward the shoulder — the one collision this arrangement has to dodge.
+// The bearing trades the glyph's height against its width, the pair being what the width is
+// measured across. At 26 they sit nearer level than diagonal, so they flank the head rather than
+// corner it. Steeper squares the glyph up but drops the falling sparkle toward the shoulder,
+// which is the one collision this arrangement has to dodge.
 private const val SPARKLE_REACH = 2f * HEAD_INK_RADIUS
 private const val SPARKLE_BEARING = 26f
 private val SPARKLE_OFFSET_X = SPARKLE_REACH * cos(SPARKLE_BEARING * DEGREES_TO_RADIANS)
